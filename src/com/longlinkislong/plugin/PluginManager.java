@@ -1,11 +1,39 @@
+/*
+ * Copyright (c) 2015, zmichaels
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * * Redistributions of source code must retain the above copyright notice, this
+ *   list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package com.longlinkislong.plugin;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -19,11 +47,77 @@ import java.util.Optional;
  * @since 14.12.29
  * @see com.longlinkislong.plugin.PluginSelector
  */
-public class PluginManager<Key, Implementation> {
+public final class PluginManager<Key, Implementation> {
 
     private final Map<Key, Class<? extends Implementation>> implementations = new HashMap<>();
-    private final PluginSelector<Key, Implementation> selector;
-    private Implementation selectedImpl;
+    private PluginSelector<Key, Implementation> selector;
+    private final PluginSelectorBuilder<Key, Implementation> builder = new PluginSelectorBuilder();
+    private Optional<Implementation> selectedImpl = Optional.empty();
+
+    /**
+     * Retrieves a list of plugins supported by the PluginManager
+     *
+     * @return list of plugins
+     * @since 15.01.06
+     */
+    public List<Key> listPlugins() {
+        this.checkSelector();
+
+        return Collections.unmodifiableList(this.selector.getSupported());
+    }
+
+    /**
+     * Registers another selector for the PluginManager to use.
+     *
+     * @param selector another selector
+     * @since 15.01.12
+     */
+    public void registerSelector(final PluginSelector<Key, Implementation> selector) {
+        this.builder.join(selector);
+        this.selector = null;
+    }
+
+    /**
+     * Registers another selector defined as a PluginSelectorBuilder for the
+     * PluginManager to use.
+     *
+     * @param selectorBuilder another selector
+     * @since 15.01.12
+     */
+    public void registerSelector(final PluginSelectorBuilder<Key, Implementation> selectorBuilder) {
+        this.builder.join(selectorBuilder);
+        this.selector = null;
+    }
+
+    /**
+     * Registers another selector defined as a classpath for the PluginManager to use.
+     * @param selectorDef the full path to the PluginSelector
+     * @throws ClassNotFoundException if the path does not point to a class
+     * @since 15.01.12
+     */
+    public void registerSelector(final String selectorDef) throws ClassNotFoundException {
+        this.builder.join(selectorDef);
+        this.selector = null;
+    }
+
+    private void checkSelector() {
+        if (this.selector == null) {
+            this.selectedImpl = Optional.empty();
+            this.selector = this.builder.getSelector();
+            this.implementations.clear();
+            this.selector.registerImplements(this.implementations);
+        }
+    }
+
+    /**
+     * Constructs a PluginManager without defining a selector. It is recommended
+     * to call registerSelector before calling any other method.
+     *
+     * @since 15.01.12
+     */
+    public PluginManager() {
+
+    }
 
     /**
      * Constructs a new PluginManager with the absolute classname for the
@@ -36,11 +130,7 @@ public class PluginManager<Key, Implementation> {
      * @since 14.12.29
      */
     public PluginManager(final String selectorDef) throws ClassNotFoundException {
-        final Class<? extends PluginSelector<Key, Implementation>> implSelector
-                = (Class<? extends PluginSelector<Key, Implementation>>) Class.forName(selectorDef);
-
-        this.selector = getImplementation(implSelector).orElseThrow(NullPointerException::new);
-        this.selector.registerImplements(this.implementations);
+        this.registerSelector(selectorDef);
     }
 
     /**
@@ -53,8 +143,17 @@ public class PluginManager<Key, Implementation> {
      * @since 14.12.29
      */
     public PluginManager(final PluginSelector<Key, Implementation> selector) {
-        this.selector = selector;
-        this.selector.registerImplements(this.implementations);
+        this.registerSelector(selector);
+    }
+
+    /**
+     * Constructs a new PluginManager from a PluginSelectorBuilder.
+     *
+     * @param builder the builder to read values from.
+     * @since 15.01.12
+     */
+    public PluginManager(final PluginSelectorBuilder<Key, Implementation> builder) {
+        this.registerSelector(builder);
     }
 
     /**
@@ -62,13 +161,16 @@ public class PluginManager<Key, Implementation> {
      * instance of the object in that order.
      *
      * @param key the lookup key to use.
+     * @param params optional parameters for calling the implementations
      * @return the implementation, if it exists.
      * @since 14.12.29
      */
-    public Optional<? extends Implementation> getImplementation(final Key key) {
+    public Optional<? extends Implementation> getImplementation(final Key key, final Object... params) {
+        this.checkSelector();
+
         final Class<? extends Implementation> def = this.implementations.get(key);
 
-        return getImplementation(def);
+        return getImplementation(def, params);
     }
 
     /**
@@ -80,10 +182,15 @@ public class PluginManager<Key, Implementation> {
      * @since 14.12.29
      */
     public Implementation selectPreferred() {
-        this.selectedImpl = this.getImplementation(this.selector.getPreferred())
-                .orElseThrow(NullPointerException::new);
+        this.checkSelector();
 
-        return this.selectedImpl;
+        final Implementation impl = this.getImplementation(
+                this.selector.getPreferred())
+                .get();
+
+        this.selectedImpl = Optional.of(impl);
+
+        return impl;
     }
 
     /**
@@ -97,20 +204,52 @@ public class PluginManager<Key, Implementation> {
      * @since 14.12.29
      */
     public Implementation getPreferred() {
-        if (this.selectedImpl == null) {
-            return this.selectPreferred();
-        } else {
-            return this.selectedImpl;
-        }
+        this.checkSelector();
+
+        return (this.selectedImpl.orElseGet(this::selectPreferred));
     }
 
-    private static <Type> Type getImplementationFromSingleton(final Class<Type> def) {
-        try {            
-            final Method singletonGetter = def.getMethod("getInstance");            
-            final Type impl = (Type) singletonGetter.invoke(null);
+    @Override
+    public boolean equals(final Object other) {
+        if (other == this) {
+            return true;
+        } else {
+            if (other instanceof PluginManager) {
+                final PluginManager o = (PluginManager) other;
+
+                this.checkSelector();
+                o.checkSelector();
+
+                return (o.implementations.equals(this.implementations));
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        this.checkSelector();
+
+        int hash = 7;
+        hash = 67 * hash + Objects.hashCode(this.implementations);
+        return hash;
+    }
+
+    @Override
+    public String toString() {
+        this.checkSelector();
+
+        return String.format("PluginManager supported plugins: %s", this.listPlugins());
+    }
+
+    private static <Type> Type getImplementationFromSingleton(final Class<Type> def, final Object... params) {
+        try {
+            final Method singletonGetter = def.getMethod("getInstance");
+            final Type impl = (Type) singletonGetter.invoke(null, params);
 
             return impl;
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {            
+        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
             return null;
         }
     }
@@ -124,20 +263,20 @@ public class PluginManager<Key, Implementation> {
             }
 
             return null;
-        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {            
+        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
             return null;
         }
     }
 
-    private static <Type> Type getImplementationFromNewInstance(final Class<Type> def) {
+    private static <Type> Type getImplementationFromNewInstance(final Class<Type> def, final Object... params) {
         try {
-            for (Constructor c : def.getConstructors()) {
-                if (c.getParameterCount() == 0) {
-                    return (Type) c.newInstance();
+            for (final Constructor c : def.getConstructors()) {
+                if (c.getParameterCount() == params.length) {
+                    return (Type) c.newInstance(params);
                 }
             }
             return null;
-        } catch (SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {            
+        } catch (SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
             return null;
         }
     }
@@ -154,26 +293,21 @@ public class PluginManager<Key, Implementation> {
      *
      * @param <Type> the type of the object.
      * @param def the class definition of the object
+     * @param params
      * @return An Optional that may contain an instance of the object.
      * @since 14.12.29
      */
-    public static <Type> Optional<Type> getImplementation(final Class<Type> def) {
-        Type impl = getImplementationFromSingleton(def);
+    public static <Type> Optional<Type> getImplementation(final Class<Type> def, final Object... params) {
+        Objects.requireNonNull(def, "Class definition cannot be null!");
 
-        if (impl == null) {            
+        Type impl = getImplementationFromSingleton(def, params);
+
+        if (impl == null) {
             impl = getImplementationFromField(def);
         }
 
-        if (impl == null) {            
-            impl = getImplementationFromNewInstance(def);
-        }
-
         if (impl == null) {
-            try {                
-                impl = def.newInstance();
-            } catch (InstantiationException | IllegalAccessException ex) {
-                impl = null;
-            }
+            impl = getImplementationFromNewInstance(def, params);
         }
 
         return Optional.ofNullable(impl);
