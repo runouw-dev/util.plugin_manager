@@ -10,6 +10,26 @@
 <project name="PluginManager" default="default" basedir=".">
     <description>Builds, tests, and runs the project PluginManager.</description>
     <import file="nbproject/build-impl.xml"/>
+    
+    <condition property="junit.exists">
+        <available file="obj/junit/412.version"/>
+    </condition>
+    
+    <target name="-check-deps-junit" unless="junit.exists">
+        <mkdir dir="obj/junit"/>
+        
+        <get
+            dest="obj/junit/"
+            src="http://storage.googleapis.com/jartifacts/junit-4.12/hamcrest-core-1.3.jar"/>
+        
+        <get
+            dest="obj/junit/"
+            src="http://storage.googleapis.com/jartifacts/junit-4.12/junit-4.12.jar"/>
+        
+        <touch file="obj/junit/412.version"/>
+    </target>
+    
+    <target name="-pre-compile-test" depends="-check-deps-junit"/>
     <!--
 
     There exist several targets which are by default empty and which can be 

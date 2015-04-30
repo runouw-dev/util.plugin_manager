@@ -170,12 +170,13 @@ public class PluginSelectorBuilder<KeyT, ClassT> {
      * @throws NullPointerException if no valid instance of the other
      * PluginSelector could be initialized.
      * @since 15.01.12
-     */
+     */    
+    @SuppressWarnings("unchecked")
     public PluginSelectorBuilder<KeyT, ClassT> join(
             final String otherLoc, final Object... params)
             throws ClassNotFoundException, NullPointerException {
 
-        final Class def = Class.forName(otherLoc);
+        final Class<?> def = Class.forName(otherLoc);                
 
         return this.join((Class<PluginSelector<KeyT, ClassT>>) def);
     }
@@ -229,7 +230,7 @@ public class PluginSelectorBuilder<KeyT, ClassT> {
         if (other == this) {
             return true;
         } else if (other instanceof PluginSelectorBuilder) {
-            final PluginSelectorBuilder o = (PluginSelectorBuilder) other;
+            final PluginSelectorBuilder<?, ?> o = (PluginSelectorBuilder) other;
 
             return (o.keys.equals(this.keys)
                     && (o.pluginMap.equals(this.pluginMap))

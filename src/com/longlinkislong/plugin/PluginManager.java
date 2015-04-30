@@ -51,7 +51,7 @@ public final class PluginManager<Key, Implementation> {
 
     private final Map<Key, Class<? extends Implementation>> implementations = new HashMap<>();
     private PluginSelector<Key, Implementation> selector;
-    private final PluginSelectorBuilder<Key, Implementation> builder = new PluginSelectorBuilder();
+    private final PluginSelectorBuilder<Key, Implementation> builder = new PluginSelectorBuilder<>();
     private Optional<Implementation> selectedImpl = Optional.empty();
 
     /**
@@ -215,7 +215,7 @@ public final class PluginManager<Key, Implementation> {
             return true;
         } else {
             if (other instanceof PluginManager) {
-                final PluginManager o = (PluginManager) other;
+                final PluginManager<?, ?> o = (PluginManager) other;
 
                 this.checkSelector();
                 o.checkSelector();
@@ -243,6 +243,7 @@ public final class PluginManager<Key, Implementation> {
         return String.format("PluginManager supported plugins: %s", this.listPlugins());
     }
 
+    @SuppressWarnings("unchecked")
     private static <Type> Type getImplementationFromSingleton(final Class<Type> def, final Object... params) {
         try {
             final Method singletonGetter = def.getMethod("getInstance");
@@ -254,6 +255,7 @@ public final class PluginManager<Key, Implementation> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static <Type> Type getImplementationFromField(final Class<Type> def) {
         try {
             final Field singletonInstance = def.getField("INSTANCE");
@@ -268,9 +270,10 @@ public final class PluginManager<Key, Implementation> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static <Type> Type getImplementationFromNewInstance(final Class<Type> def, final Object... params) {
-        try {
-            for (final Constructor c : def.getConstructors()) {
+        try {            
+            for (final Constructor<?> c : def.getConstructors()) {
                 if (c.getParameterCount() == params.length) {
                     return (Type) c.newInstance(params);
                 }
@@ -293,7 +296,7 @@ public final class PluginManager<Key, Implementation> {
      *
      * @param <Type> the type of the object.
      * @param def the class definition of the object
-     * @param params
+     * @param params list of parameters
      * @return An Optional that may contain an instance of the object.
      * @since 14.12.29
      */

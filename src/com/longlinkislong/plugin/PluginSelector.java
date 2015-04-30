@@ -36,8 +36,7 @@ import java.util.Map;
  * @author zmichaels
  * @param <Key> the key for the plugin lookup.
  * @param <Implementation> the base class for the plugins
- * @since 14.12.29
- * @see com.runouw.legacyengine.plugin.PluginManager
+ * @since 14.12.29 
  */
 public interface PluginSelector<Key, Implementation> {
 
