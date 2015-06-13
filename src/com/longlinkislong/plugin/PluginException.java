@@ -25,43 +25,25 @@
  */
 package com.longlinkislong.plugin;
 
-import java.util.List;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
-import org.junit.Before;
-import org.junit.Test;
-
 /**
  *
  * @author zmichaels
  */
-public class PluginManagerTest {
-    private PluginManager<String, SimplePlugin> plugins;       
-    
-    @Before
-    public void setUp() throws ClassNotFoundException {
-        this.plugins = new PluginManager<>("simpleplugin.SimplePluginSelector");
+@SuppressWarnings("serial")
+public class PluginException extends RuntimeException {
+
+    public PluginException() {
     }
-    
-    @Test
-    public void testGetInstance() throws ClassNotFoundException {
-        final SimplePlugin plugin0 = this.plugins.getImplementation("HelloWorld");
-        
-        assertEquals(plugin0.getClass(), Class.forName("simpleplugin.HelloWorldPlugin"));
+
+    public PluginException(final String msg, final Throwable cause) {
+        super(msg, cause);
     }
-    
-    @Test
-    public void testUniqueGetInstance() {
-        final SimplePlugin plugin0 = this.plugins.getImplementation("HelloWorld");
-        final SimplePlugin plugin1 = this.plugins.getImplementation("HelloWorld");
-        
-        assertNotSame(plugin0, plugin1);
+
+    public PluginException(final String msg) {
+        super(msg);
     }
-    
-    @Test
-    public void testListSupported() {
-        List<String> supported = this.plugins.listPlugins();
-        
-        System.out.println(supported);
+
+    public PluginException(final Throwable cause) {
+        super(cause);
     }
 }

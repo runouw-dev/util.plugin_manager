@@ -47,7 +47,7 @@ import java.util.Optional;
  * @since 14.12.29
  * @see com.longlinkislong.plugin.PluginSelector
  */
-public final class PluginManager<Key, Implementation> {
+public class PluginManager<Key, Implementation> {
 
     private final Map<Key, Class<? extends Implementation>> implementations = new HashMap<>();
     private PluginSelector<Key, Implementation> selector;
@@ -72,7 +72,7 @@ public final class PluginManager<Key, Implementation> {
      * @param selector another selector
      * @since 15.01.12
      */
-    public void registerSelector(final PluginSelector<Key, Implementation> selector) {
+    public final void registerSelector(final PluginSelector<Key, Implementation> selector) {
         this.builder.join(selector);
         this.selector = null;
     }
@@ -84,7 +84,7 @@ public final class PluginManager<Key, Implementation> {
      * @param selectorBuilder another selector
      * @since 15.01.12
      */
-    public void registerSelector(final PluginSelectorBuilder<Key, Implementation> selectorBuilder) {
+    public final void registerSelector(final PluginSelectorBuilder<Key, Implementation> selectorBuilder) {
         this.builder.join(selectorBuilder);
         this.selector = null;
     }
@@ -95,7 +95,7 @@ public final class PluginManager<Key, Implementation> {
      * @throws ClassNotFoundException if the path does not point to a class
      * @since 15.01.12
      */
-    public void registerSelector(final String selectorDef) throws ClassNotFoundException {
+    public final void registerSelector(final String selectorDef) throws ClassNotFoundException {
         this.builder.join(selectorDef);
         this.selector = null;
     }
@@ -165,9 +165,13 @@ public final class PluginManager<Key, Implementation> {
      * @return the implementation, if it exists.
      * @since 14.12.29
      */
-    public Optional<? extends Implementation> getImplementation(final Key key, final Object... params) {
+    public Implementation getImplementation(final Key key, final Object... params) {
         this.checkSelector();
 
+        if(!this.implementations.containsKey(key)){
+            throw new PluginException("Could not find plugin: " + key);
+        }
+        
         final Class<? extends Implementation> def = this.implementations.get(key);
 
         return getImplementation(def, params);
@@ -185,8 +189,7 @@ public final class PluginManager<Key, Implementation> {
         this.checkSelector();
 
         final Implementation impl = this.getImplementation(
-                this.selector.getPreferred())
-                .get();
+                this.selector.getPreferred());
 
         this.selectedImpl = Optional.of(impl);
 
@@ -292,15 +295,15 @@ public final class PluginManager<Key, Implementation> {
      * or execute without error, it will attempt to create a new instance by
      * calling a 0-parameter constructor. If that fails, it will then
      * brute-force initialize the object. In the instance that an implementation
-     * is never obtained, an empty Optional will be returned.
+     * is never obtained, an exception will be thrown.
      *
      * @param <Type> the type of the object.
      * @param def the class definition of the object
      * @param params list of parameters
-     * @return An Optional that may contain an instance of the object.
+     * @return an instance of the object
      * @since 14.12.29
      */
-    public static <Type> Optional<Type> getImplementation(final Class<Type> def, final Object... params) {
+    public static <Type> Type getImplementation(final Class<Type> def, final Object... params) {        
         Objects.requireNonNull(def, "Class definition cannot be null!");
 
         Type impl = getImplementationFromSingleton(def, params);
@@ -308,11 +311,14 @@ public final class PluginManager<Key, Implementation> {
         if (impl == null) {
             impl = getImplementationFromField(def);
         }
-
         if (impl == null) {
             impl = getImplementationFromNewInstance(def, params);
         }
+        
+        if (impl == null) {
+            throw new PluginException("Could not find suitable constructor implementation for definition: " + def);
+        }
 
-        return Optional.ofNullable(impl);
+        return impl;
     }
 }

@@ -62,9 +62,9 @@ public class ComplexPluginSelectorTest {
     
     @Test
     public void testComplexInitiate() {
-        final SimplePlugin plugin0 = this.plugins.getImplementation("HelloWorld").get();
-        final SimplePlugin plugin1 = this.plugins.getImplementation("IndexedPlugin").get();
-        final SimplePlugin plugin2 = this.plugins.getImplementation("IndexedPlugin").get();
+        final SimplePlugin plugin0 = this.plugins.getImplementation("HelloWorld");
+        final SimplePlugin plugin1 = this.plugins.getImplementation("IndexedPlugin");
+        final SimplePlugin plugin2 = this.plugins.getImplementation("IndexedPlugin");
         
         System.out.println(plugin0);
         System.out.println(plugin1);

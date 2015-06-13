@@ -25,6 +25,8 @@
  */
 package com.longlinkislong.plugin;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +38,7 @@ import java.util.Map;
  * @author zmichaels
  * @param <Key> the key for the plugin lookup.
  * @param <Implementation> the base class for the plugins
- * @since 14.12.29 
+ * @since 14.12.29
  */
 public interface PluginSelector<Key, Implementation> {
 
@@ -72,5 +74,68 @@ public interface PluginSelector<Key, Implementation> {
      * @since 14.12.29
      */
     public void registerImplements(Map<Key, Class<? extends Implementation>> pluginImpl);
-       
+
+    /**
+     * Creates a new PluginSelector for a single key, implementation pair.
+     *
+     * @param <Key> the type of key
+     * @param <Implementation> the type of implementation
+     * @param key the key
+     * @param impl the class object for the implementation
+     * @return the PluginSelector
+     * @since 15.06.12
+     */
+    public static <Key, Implementation> PluginSelector<Key, Implementation> singletonSelector(
+            final Key key, final Class<? extends Implementation> impl) {
+
+        return new PluginSelector<Key, Implementation>() {
+
+            @Override
+            public List<Key> getSupported() {
+                return Collections.singletonList(key);
+            }
+
+            @Override
+            public void registerImplements(Map<Key, Class<? extends Implementation>> pluginImpl) {
+                pluginImpl.put(key, impl);
+            }
+
+        };
+    }
+
+    /**
+     * Constructs a new PluginSelector from two PluginSelectors.
+     *
+     * @param <Key> the key object
+     * @param <Implementation> the implementation
+     * @param first the first plugin selector
+     * @param second the second plugin selector
+     * @return the combined selectors
+     * @since 15.06.12
+     */
+    public static <Key, Implementation> PluginSelector<Key, Implementation> join(
+            final PluginSelector<Key, Implementation> first,
+            final PluginSelector<Key, Implementation> second) {
+
+        final List<Key> allKeys = new ArrayList<>();
+
+        allKeys.addAll(first.getSupported());
+        allKeys.addAll(second.getSupported());
+
+        return new PluginSelector<Key, Implementation>() {
+
+            @Override
+            public List<Key> getSupported() {
+
+                return Collections.unmodifiableList(allKeys);
+            }
+
+            @Override
+            public void registerImplements(Map<Key, Class<? extends Implementation>> pluginImpl) {
+                first.registerImplements(pluginImpl);
+                second.registerImplements(pluginImpl);
+            }
+
+        };
+    }       
 }

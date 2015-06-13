@@ -152,8 +152,7 @@ public class PluginSelectorBuilder<KeyT, ClassT> {
             final Object... params)
             throws NullPointerException {
 
-        return this.join(PluginManager.getImplementation(pluginDef, params)
-                .orElseThrow(NullPointerException::new));
+        return this.join(PluginManager.getImplementation(pluginDef, params));
     }
 
     /**
