@@ -26,23 +26,44 @@
 package com.longlinkislong.plugin;
 
 /**
- *
+ * A type of exception thrown by the PluginManager package.
  * @author zmichaels
+ * @since 15.06.18
  */
 @SuppressWarnings("serial")
 public class PluginException extends RuntimeException {
 
+    /**
+     * Constructs a new PluginException with no message or cause.
+     * @since 15.06.18
+     */
     public PluginException() {
     }
 
+    /**
+     * Constructs a PluginException with a message and cause.
+     * @param msg the description of the exception
+     * @param cause the cause of the exception
+     * @since 15.06.18
+     */
     public PluginException(final String msg, final Throwable cause) {
         super(msg, cause);
     }
 
+    /**
+     * Constructs a PluginException with a message.
+     * @param msg the description of the exception
+     * @since 15.06.18
+     */
     public PluginException(final String msg) {
         super(msg);
     }
 
+    /**
+     * Constructs a PluginException with a specified cause.
+     * @param cause the cause of the exception
+     * @since 15.06.18
+     */
     public PluginException(final Throwable cause) {
         super(cause);
     }
