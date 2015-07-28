@@ -27,9 +27,19 @@ package simpleplugin;
 
 import com.longlinkislong.plugin.SimplePlugin;
 
-public class HelloWorldPlugin implements SimplePlugin{
+/**
+ *
+ * @author zmichaels
+ */
+public class Stage2UpgradablePlugin implements SimplePlugin{
+    private String value;
+        
+    public void upgrade(SimplePlugin oldPlugin) {
+        this.value = oldPlugin.toString() + "_upgrade";
+    }
+    
     @Override
     public String toString() {
-        return "Hello World!";
+        return this.value;
     }
 }

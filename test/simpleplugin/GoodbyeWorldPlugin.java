@@ -27,9 +27,10 @@ package simpleplugin;
 
 import com.longlinkislong.plugin.SimplePlugin;
 
-public class HelloWorldPlugin implements SimplePlugin{
+public class GoodbyeWorldPlugin implements SimplePlugin {
+
     @Override
     public String toString() {
-        return "Hello World!";
+        return "Goodbye World!";
     }
 }

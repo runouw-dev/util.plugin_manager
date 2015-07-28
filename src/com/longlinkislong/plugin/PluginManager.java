@@ -25,16 +25,19 @@
  */
 package com.longlinkislong.plugin;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * The PluginManager acts as an intermediate between the application and the
@@ -53,6 +56,7 @@ public class PluginManager<Key, Implementation> {
     private PluginSelector<Key, Implementation> selector;
     private final PluginSelectorBuilder<Key, Implementation> builder = new PluginSelectorBuilder<>();
     private Optional<Implementation> selectedImpl = Optional.empty();
+    private final Map<Key, List<WeakReference<HotSwapPlugin<Implementation>>>> hotswapPlugins = new HashMap<>();
 
     /**
      * Retrieves a list of plugins supported by the PluginManager
@@ -90,7 +94,9 @@ public class PluginManager<Key, Implementation> {
     }
 
     /**
-     * Registers another selector defined as a classpath for the PluginManager to use.
+     * Registers another selector defined as a classpath for the PluginManager
+     * to use.
+     *
      * @param selectorDef the full path to the PluginSelector
      * @throws ClassNotFoundException if the path does not point to a class
      * @since 15.01.12
@@ -100,12 +106,48 @@ public class PluginManager<Key, Implementation> {
         this.selector = null;
     }
 
+    /**
+     * Forces the internal plugin selector to be rebuilt.
+     *
+     * @since 15.07.28
+     */
+    public void rebuildSelector() {
+        this.selector = null;
+        this.checkSelector();
+    }
+
     private void checkSelector() {
         if (this.selector == null) {
             this.selectedImpl = Optional.empty();
             this.selector = this.builder.getSelector();
             this.implementations.clear();
             this.selector.registerImplements(this.implementations);
+
+            for (Key key : this.hotswapPlugins.keySet()) {                
+                List<WeakReference<HotSwapPlugin<Implementation>>> plugins = this.hotswapPlugins.get(key);
+
+                if (!this.implementations.containsKey(key)) {
+                    continue;
+                }
+
+                final String keyType = this.implementations.get(key).getTypeName();
+
+                // remove all dead plugins
+                plugins = plugins.stream()
+                        .map(WeakReference::get)
+                        .filter(Objects::nonNull)
+                        .map(p -> {
+                            if (!p.getPluginType().equals(keyType)) {                                
+                                p.swapPlugin(this.getImplementation(key));
+                            }
+
+                            return p;
+                        })
+                        .map(WeakReference::new)
+                        .collect(Collectors.toList());
+
+                this.hotswapPlugins.put(key, plugins);
+            }
         }
     }
 
@@ -168,13 +210,32 @@ public class PluginManager<Key, Implementation> {
     public Implementation getImplementation(final Key key, final Object... params) {
         this.checkSelector();
 
-        if(!this.implementations.containsKey(key)){
+        if (!this.implementations.containsKey(key)) {
             throw new PluginException("Could not find plugin: " + key);
         }
-        
+
         final Class<? extends Implementation> def = this.implementations.get(key);
 
         return getImplementation(def, params);
+    }
+
+    /**
+     * Retrieves a plugin implementation that will self-update with
+     * replacements.
+     *
+     * @param key the key for the plugin.
+     * @return the plugin.
+     * @since 15.07.28
+     */
+    public HotSwapPlugin<Implementation> getHotSwapImplementation(final Key key) {
+        final HotSwapPlugin<Implementation> plugin = new HotSwapPlugin(this.getImplementation(key));
+        final List<WeakReference<HotSwapPlugin<Implementation>>> plugins = this.hotswapPlugins.getOrDefault(key, new ArrayList<>());
+
+        plugins.add(new WeakReference<>(plugin));
+
+        this.hotswapPlugins.put(key, plugins);
+
+        return plugin;
     }
 
     /**
@@ -275,7 +336,7 @@ public class PluginManager<Key, Implementation> {
 
     @SuppressWarnings("unchecked")
     private static <Type> Type getImplementationFromNewInstance(final Class<Type> def, final Object... params) {
-        try {            
+        try {
             for (final Constructor<?> c : def.getConstructors()) {
                 if (c.getParameterCount() == params.length) {
                     return (Type) c.newInstance(params);
@@ -303,7 +364,7 @@ public class PluginManager<Key, Implementation> {
      * @return an instance of the object
      * @since 14.12.29
      */
-    public static <Type> Type getImplementation(final Class<Type> def, final Object... params) {        
+    public static <Type> Type getImplementation(final Class<Type> def, final Object... params) {
         Objects.requireNonNull(def, "Class definition cannot be null!");
 
         Type impl = getImplementationFromSingleton(def, params);
@@ -314,7 +375,7 @@ public class PluginManager<Key, Implementation> {
         if (impl == null) {
             impl = getImplementationFromNewInstance(def, params);
         }
-        
+
         if (impl == null) {
             throw new PluginException("Could not find suitable constructor implementation for definition: " + def);
         }

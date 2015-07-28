@@ -27,9 +27,15 @@ package simpleplugin;
 
 import com.longlinkislong.plugin.SimplePlugin;
 
-public class HelloWorldPlugin implements SimplePlugin{
+/**
+ *
+ * @author zmichaels
+ */
+public class BaseUpgradablePlugin implements SimplePlugin {
+    private final String value = "base";
+    
     @Override
     public String toString() {
-        return "Hello World!";
+        return this.value;
     }
 }
