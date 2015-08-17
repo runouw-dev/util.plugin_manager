@@ -1,8 +1,8 @@
 artifactory {
-    contextUrl = "${artifactoryContextURL}"
+    contextUrl = "http://longlinkislong.com:8080/artifactory/"
     publish {
         repository {
-            repoKey = "${artifactoryPublishRepo}"
+            repoKey = "libs-${buildType}-local"
             username = "${artifactoryUser}"
             password = "${artifactoryPassword}"
             maven = true
@@ -10,23 +10,107 @@ artifactory {
         defaults {
             publications ('mavenJava')
         }
-    }
-    resolve {
-        repository {
-            repoKey = "${artifactoryResolveRepo}"
-            username = "${artifactoryUser}"
-            password = "${artifactoryPassword}"
-            maven = true
-        }
-    }
+    }    
 }
-
+ 
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
             groupId = "${group}"
-            version = "${version}"
-        }
+                        
+            def versionPropsFile = new File('version.properties')
+    
+            if(!versionPropsFile.exists()) {
+                def versionProps = new Properties()
+        
+                versionProps['major'] = '1'
+                versionProps['minor'] = '0'
+                versionProps['revision'] = '0'
+        
+                if(versioning == 'auto') {
+                    versionProps.store(versionPropsFile.newWriter(), null)
+                }
+                    
+                version = "1.0r0"
+            } else if(versionPropsFile.canRead()) {
+                def versionProps = new Properties()
+        
+                versionProps.load(new FileInputStream(versionPropsFile))
+        
+                def major = versionProps['major']
+                def minor = versionProps['minor']
+                def revision = versionProps['revision'].toInteger() + 1
+                    
+                versionProps['revision'] = revision.toString()
+                    
+                if(versioning == 'auto') {
+                    versionProps.store(versionPropsFile.newWriter(), null)
+                }
+        
+                version = "${major}.${minor}r${revision}"
+            }
+            
+            if(buildType == 'snapshot') {
+                version = new Date().format('yy.MM') + "-SNAPSHOT"
+            }
+        }    
     }
 }
+
+task incrementMajor << {
+    def versionPropsFile = new File('version.properties')
+    def versionProps = new Properties()
+    
+    if(!versionPropsFile.exists()) {
+        versionProps['major'] = '1'
+        versionProps['minor'] = '0'
+        versionProps['revision'] = '0'
+    } else {
+        versionProps['major'] = (versionProps['major'].toInteger() + 1).toString()
+        versionProps['minor'] = '0'
+        versionProps['revision'] = '0'
+    }
+    
+    versionProps.store(versionPropsFile.newWriter(), null)
+}
+
+task incrementMinor << {
+    def versionPropsFile = new File('version.properties')
+    def versionProps = new Properties()
+    
+    if(!versionPropsFile.exists()) {
+        versionProps['major'] = '1'
+        versionProps['minor'] = '0'
+        versionProps['revision'] = '0'
+    } else {
+        versionProps['minor'] = (versionProps['minor'].toInteger() + 1).toString()
+        versionProps['revision'] = '0'
+    }
+    
+    versionProps.store(versionPropsFile.newWriter(), null)
+}
+
+task version << {
+    def versionPropsFile = new File('version.properties')
+    def versionProps = new Properties()
+    
+    if(!versionPropsFile.exists()) {
+        versionProps['major'] = '1'
+        versionProps['minor'] = '0'
+        versionProps['revision'] = '0'
+        
+        versionProps.store(versionPropsFile.newWriter(), null)
+        
+        println 'Version: 1.0r0'
+    } else {
+        versionProps.load(new FileInputStream(versionPropsFile))
+        
+        def major = versionProps['major']
+        def minor = versionProps['minor']
+        def revision = versionProps['revision']
+        
+        println "Version: ${major}.${minor}r${revision}"
+    }
+}
+
