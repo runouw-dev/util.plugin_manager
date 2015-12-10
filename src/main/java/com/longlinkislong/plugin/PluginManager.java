@@ -59,6 +59,18 @@ public class PluginManager<Key, Implementation> {
     private final Map<Key, List<WeakReference<HotSwapPlugin<Implementation>>>> hotswapPlugins = new HashMap<>();
 
     /**
+     * Removes a plugin from listing. This will not unload a class. To unload a
+     * class, the classloader used must be garbage collected.
+     *
+     * @param key the key to remove.
+     * @since 15.12.10
+     */
+    public void removePlugin(final Key key) {
+        this.implementations.remove(key);
+        this.hotswapPlugins.remove(key);
+    }
+
+    /**
      * Retrieves a list of plugins supported by the PluginManager
      *
      * @return list of plugins
@@ -123,7 +135,7 @@ public class PluginManager<Key, Implementation> {
             this.implementations.clear();
             this.selector.registerImplements(this.implementations);
 
-            for (Key key : this.hotswapPlugins.keySet()) {                
+            for (Key key : this.hotswapPlugins.keySet()) {
                 List<WeakReference<HotSwapPlugin<Implementation>>> plugins = this.hotswapPlugins.get(key);
 
                 if (!this.implementations.containsKey(key)) {
@@ -137,7 +149,7 @@ public class PluginManager<Key, Implementation> {
                         .map(WeakReference::get)
                         .filter(Objects::nonNull)
                         .map(p -> {
-                            if (!p.getPluginType().equals(keyType)) {                                
+                            if (!p.getPluginType().equals(keyType)) {
                                 p.swapPlugin(this.getImplementation(key));
                             }
 
@@ -277,15 +289,13 @@ public class PluginManager<Key, Implementation> {
     public boolean equals(final Object other) {
         if (other == this) {
             return true;
-        } else {
-            if (other instanceof PluginManager) {
-                final PluginManager<?, ?> o = (PluginManager) other;
+        } else if (other instanceof PluginManager) {
+            final PluginManager<?, ?> o = (PluginManager) other;
 
-                this.checkSelector();
-                o.checkSelector();
+            this.checkSelector();
+            o.checkSelector();
 
-                return (o.implementations.equals(this.implementations));
-            }
+            return (o.implementations.equals(this.implementations));
         }
 
         return false;
