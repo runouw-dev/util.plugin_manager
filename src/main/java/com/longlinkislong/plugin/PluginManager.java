@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The PluginManager acts as an intermediate between the application and the
@@ -57,6 +59,7 @@ public class PluginManager<Key, Implementation> {
     private final PluginSelectorBuilder<Key, Implementation> builder = new PluginSelectorBuilder<>();
     private Optional<Implementation> selectedImpl = Optional.empty();
     private final Map<Key, List<WeakReference<HotSwapPlugin<Implementation>>>> hotswapPlugins = new HashMap<>();
+    private static final Logger LOGGER = LoggerFactory.getLogger(PluginManager.class);
 
     /**
      * Removes a plugin from listing. This will not unload a class. To unload a
@@ -325,6 +328,7 @@ public class PluginManager<Key, Implementation> {
 
             return impl;
         } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            LOGGER.trace(ex.getMessage(), ex);
             return null;
         }
     }
@@ -340,6 +344,7 @@ public class PluginManager<Key, Implementation> {
 
             return null;
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            LOGGER.trace(ex.getMessage(), ex);
             return null;
         }
     }
@@ -354,6 +359,7 @@ public class PluginManager<Key, Implementation> {
             }
             return null;
         } catch (SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            LOGGER.trace(ex.getMessage(), ex);
             return null;
         }
     }
