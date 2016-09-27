@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,9 +54,10 @@ import org.slf4j.LoggerFactory;
 public class PluginManager<Key, Implementation> {
 
     private final Map<Key, Class<? extends Implementation>> implementations = new HashMap<>();
+
     private PluginSelector<Key, Implementation> selector;
     private final PluginSelectorBuilder<Key, Implementation> builder = new PluginSelectorBuilder<>();
-    private Optional<Implementation> selectedImpl = Optional.empty();
+    private Implementation selectedImpl = null;
     private final Map<Key, List<WeakReference<HotSwapPlugin<Implementation>>>> hotswapPlugins = new HashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger(PluginManager.class);
 
@@ -133,7 +133,7 @@ public class PluginManager<Key, Implementation> {
 
     private void checkSelector() {
         if (this.selector == null) {
-            this.selectedImpl = Optional.empty();
+            this.selectedImpl = null;
             this.selector = this.builder.getSelector();
             this.implementations.clear();
             this.selector.registerImplements(this.implementations);
@@ -267,7 +267,7 @@ public class PluginManager<Key, Implementation> {
         final Implementation impl = this.getImplementation(
                 this.selector.getPreferred());
 
-        this.selectedImpl = Optional.of(impl);
+        this.selectedImpl = impl;
 
         return impl;
     }
@@ -285,7 +285,7 @@ public class PluginManager<Key, Implementation> {
     public Implementation getPreferred() {
         this.checkSelector();
 
-        return (this.selectedImpl.orElseGet(this::selectPreferred));
+        return (this.selectedImpl == null) ? this.selectPreferred() : this.selectedImpl;
     }
 
     @Override
