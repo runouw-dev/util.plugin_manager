@@ -36,11 +36,17 @@ import org.junit.Test;
  * @author zmichaels
  */
 public class PluginManagerTest {
+    static {
+        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+    }
+    
     private PluginManager<String, SimplePlugin> plugins;       
     
     @Before
     public void setUp() throws ClassNotFoundException {
-        this.plugins = new PluginManager<>("simpleplugin.SimplePluginSelector");
+        this.plugins = new PluginManager<>();
+        this.plugins.registerSelector("simpleplugin.SimplePluginSelector");
+        //this.plugins.registerSelector(simpleplugin.SimplePluginSelector.getInstance());
     }
     
     @Test

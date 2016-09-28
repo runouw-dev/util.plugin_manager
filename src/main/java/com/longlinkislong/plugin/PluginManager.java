@@ -25,17 +25,17 @@
  */
 package com.longlinkislong.plugin;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 public class PluginManager<Key, Implementation> {
 
     private final Map<Key, Class<? extends Implementation>> implementations = new HashMap<>();
+    private final Map<Class<? extends Implementation>, MethodHandle> constructors = new HashMap<>();
 
     private PluginSelector<Key, Implementation> selector;
     private final PluginSelectorBuilder<Key, Implementation> builder = new PluginSelectorBuilder<>();
@@ -230,8 +231,28 @@ public class PluginManager<Key, Implementation> {
         }
 
         final Class<? extends Implementation> def = this.implementations.get(key);
+        MethodHandle handle = this.constructors.get(def);
 
-        return getImplementation(def, params);
+        if (handle == null) {
+            handle = getSingletonGetter(def, params)
+                    .orElseGet(() -> getFieldGetter(def)
+                            .orElseGet(() -> getConstructorGetter(def, params)
+                                    .get()));
+
+            this.constructors.put(def, handle);
+        }
+
+        try {
+            if (params.length == 0) {
+                return (Implementation) handle.invoke();
+            } else {
+                return (Implementation) handle.invoke(params);
+            }
+        } catch (Throwable ex) {
+            LOGGER.error("Unable to get implementation!");
+            LOGGER.debug(ex.getMessage(), ex);
+            return null;
+        }
     }
 
     /**
@@ -320,48 +341,66 @@ public class PluginManager<Key, Implementation> {
         return String.format("PluginManager supported plugins: %s", this.listPlugins());
     }
 
-    @SuppressWarnings("unchecked")
-    private static <Type> Type getImplementationFromSingleton(final Class<Type> def, final Object... params) {
+    private static <Type> Optional<MethodHandle> getSingletonGetter(final Class<Type> def, final Object... params) {
         try {
-            final Method singletonGetter = def.getMethod("getInstance");
-            final Type impl = (Type) singletonGetter.invoke(null, params);
+            if (params.length == 0) {
+                final MethodType mt = MethodType.methodType(def);
+                final MethodHandle getter = MethodHandles.lookup().findStatic(def, "getInstance", mt);
 
-            return impl;
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            LOGGER.trace(ex.getMessage(), ex);
-            return null;
-        }
-    }
+                return Optional.of(getter);
+            } else {
+                final Class<?>[] cParams = new Class[params.length];
 
-    @SuppressWarnings("unchecked")
-    private static <Type> Type getImplementationFromField(final Class<Type> def) {
-        try {
-            final Field singletonInstance = def.getField("INSTANCE");
-
-            if (def.isAssignableFrom(singletonInstance.getType())) {
-                return (Type) singletonInstance.get(null);
-            }
-
-            return null;
-        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-            LOGGER.trace(ex.getMessage(), ex);
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <Type> Type getImplementationFromNewInstance(final Class<Type> def, final Object... params) {
-        try {
-            for (final Constructor<?> c : def.getConstructors()) {
-                if (c.getParameterCount() == params.length) {
-                    return (Type) c.newInstance(params);
+                for (int i = 0; i < params.length; i++) {
+                    cParams[i] = params[i].getClass();
                 }
+
+                final MethodType mt = MethodType.methodType(def, cParams);
+                final MethodHandle getter = MethodHandles.lookup().findStatic(def, "getInstance", mt);
+
+                return Optional.of(getter);
             }
-            return null;
-        } catch (SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+        } catch (IllegalAccessException | NoSuchMethodException | SecurityException ex) {
             LOGGER.trace(ex.getMessage(), ex);
-            return null;
+            return Optional.empty();
         }
+    }
+
+    private static <Type> Optional<MethodHandle> getFieldGetter(final Class<Type> def) {
+        try {
+            final MethodHandle getter = MethodHandles.lookup().findStaticGetter(def, "INSTANCE", def);
+
+            return Optional.of(getter);
+        } catch (IllegalAccessException | NoSuchFieldException | SecurityException ex) {
+            LOGGER.trace(ex.getMessage(), ex);
+            return Optional.empty();
+        }
+    }
+
+    private static <Type> Optional<MethodHandle> getConstructorGetter(final Class<Type> def, final Object... params) {
+        try {
+            if (params.length == 0) {
+                final MethodType mt = MethodType.methodType(void.class);
+                final MethodHandle handle = MethodHandles.lookup().findConstructor(def, mt);
+
+                return Optional.of(handle);
+            } else {
+                final Class<?>[] cParams = new Class[params.length];
+
+                for (int i = 0; i < params.length; i++) {
+                    cParams[i] = params[i].getClass();
+                }
+
+                final MethodType mt = MethodType.methodType(void.class, cParams);
+                final MethodHandle handle = MethodHandles.lookup().findConstructor(def, mt);
+
+                return Optional.of(handle);
+            }
+        } catch (IllegalAccessException | NoSuchMethodException ex) {
+            LOGGER.trace(ex.getMessage(), ex);
+        }
+
+        return Optional.empty();
     }
 
     /**
@@ -383,19 +422,40 @@ public class PluginManager<Key, Implementation> {
     public static <Type> Type getImplementation(final Class<Type> def, final Object... params) {
         Objects.requireNonNull(def, "Class definition cannot be null!");
 
-        Type impl = getImplementationFromSingleton(def, params);
+        final Optional<MethodHandle> singleton = getSingletonGetter(def, params);
 
-        if (impl == null) {
-            impl = getImplementationFromField(def);
-        }
-        if (impl == null) {
-            impl = getImplementationFromNewInstance(def, params);
-        }
+        try {
+            if (singleton.isPresent()) {
+                if (params.length == 0) {
+                    return (Type) singleton.get().invoke();
+                } else {
+                    return (Type) singleton.get().invoke(params);
+                }
+            } else {
+                final Optional<MethodHandle> field = getFieldGetter(def);
 
-        if (impl == null) {
-            throw new PluginException("Could not find suitable constructor implementation for definition: " + def);
-        }
+                if (field.isPresent()) {
+                    return (Type) field.get().invokeExact();
+                } else {
+                    final Optional<MethodHandle> constructor = getConstructorGetter(def, params);
 
-        return impl;
+                    if (constructor.isPresent()) {
+                        if (params.length == 0) {
+                            return (Type) constructor.get().invoke();
+                        } else {
+                            return (Type) constructor.get().invoke(params);
+                        }
+                    } else {
+                        LOGGER.error("Unable to find any type of constructor!");
+                        return null;
+                    }
+                }
+            }
+        } catch (Throwable ex) {
+            LOGGER.error("Unable to get implementation!");
+            LOGGER.debug(ex.getMessage(), ex);
+
+            return null;
+        }
     }
 }
