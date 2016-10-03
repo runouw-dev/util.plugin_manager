@@ -29,6 +29,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -349,16 +350,7 @@ public class PluginManager<Key, Implementation> {
 
                 return Optional.of(getter);
             } else {
-                final Class<?>[] cParams = new Class[params.length];
-
-                for (int i = 0; i < params.length; i++) {
-                    cParams[i] = params[i].getClass();
-                }
-
-                final MethodType mt = MethodType.methodType(def, cParams);
-                final MethodHandle getter = MethodHandles.lookup().findStatic(def, "getInstance", mt);
-
-                return Optional.of(getter);
+                return Optional.empty();
             }
         } catch (IllegalAccessException | NoSuchMethodException | SecurityException ex) {
             LOGGER.trace(ex.getMessage(), ex);
@@ -385,20 +377,42 @@ public class PluginManager<Key, Implementation> {
 
                 return Optional.of(handle);
             } else {
-                final Class<?>[] cParams = new Class[params.length];
+                final int pLen = params.length;
+                final Class<?>[] cParams = new Class[pLen];
 
-                for (int i = 0; i < params.length; i++) {
+                for (int i = 0; i < pLen; i++) {
                     cParams[i] = params[i].getClass();
                 }
 
-                final MethodType mt = MethodType.methodType(void.class, cParams);                
-                final MethodHandle handle = MethodHandles.lookup().findConstructor(def, mt);
+                final Constructor[] ctrs = def.getConstructors();
 
-                return Optional.of(handle);
+                for (Constructor ctr : ctrs) {
+                    final Class<?>[] testParams = ctr.getParameterTypes();
+
+                    if (testParams.length == pLen) {
+                        boolean isCorrectParams = true;
+
+                        for (int i = 0; i < pLen; i++) {
+                            if (!testParams[i].isAssignableFrom(cParams[i])) {
+                                isCorrectParams = false;
+                                break;
+                            }
+                        }
+
+                        if (isCorrectParams) {
+                            final MethodType mt = MethodType.methodType(void.class, testParams);
+                            final MethodHandle handle = MethodHandles.lookup().findConstructor(def, mt);
+
+                            return Optional.of(handle);
+                        }
+                    }
+                }
+
+                LOGGER.error("Unable to scan constructors for matching definition!");
+                return Optional.empty();
             }
         } catch (IllegalAccessException | NoSuchMethodException ex) {
-            LOGGER.trace(ex.getMessage(), ex);
-            ex.printStackTrace();
+            LOGGER.trace(ex.getMessage(), ex);            
             return Optional.empty();
         }       
     }

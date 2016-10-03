@@ -52,9 +52,10 @@ public class ComplexPluginSelectorTest {
     
     @Test
     public void testListPlugins() {
-        final List<String> expectedList = new ArrayList<>();
+        final List<String> expectedList = new ArrayList<>(3);
         
         expectedList.add("HelloWorld");
+        expectedList.add("Greeting");
         expectedList.add("IndexedPlugin");
         
         assertEquals(expectedList, this.plugins.listPlugins());
