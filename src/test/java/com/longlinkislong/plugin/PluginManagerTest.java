@@ -30,14 +30,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author zmichaels
  */
 public class PluginManagerTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PluginManagerTest.class);
+
     static {
-        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "trace");
     }
     
     private PluginManager<String, SimplePlugin> plugins;       
@@ -67,7 +71,15 @@ public class PluginManagerTest {
     @Test
     public void testListSupported() {
         List<String> supported = this.plugins.listPlugins();
-        
-        System.out.println(supported);
+
+        LOGGER.info("Supported: {}", supported);
+    }
+
+    @Test
+    public void testConstructor() {
+        final String msg = "Hello, World!";
+        final SimplePlugin hello = this.plugins.getImplementation("Greeting", msg);
+
+        assertEquals(msg, hello.toString());
     }
 }

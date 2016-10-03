@@ -246,11 +246,11 @@ public class PluginManager<Key, Implementation> {
             if (params.length == 0) {
                 return (Implementation) handle.invoke();
             } else {
-                return (Implementation) handle.invoke(params);
+                return (Implementation) handle.invokeWithArguments(params);
             }
         } catch (Throwable ex) {
             LOGGER.error("Unable to get implementation!");
-            LOGGER.debug(ex.getMessage(), ex);
+            LOGGER.debug(ex.getMessage(), ex);            
             return null;
         }
     }
@@ -391,16 +391,16 @@ public class PluginManager<Key, Implementation> {
                     cParams[i] = params[i].getClass();
                 }
 
-                final MethodType mt = MethodType.methodType(void.class, cParams);
+                final MethodType mt = MethodType.methodType(void.class, cParams);                
                 final MethodHandle handle = MethodHandles.lookup().findConstructor(def, mt);
 
                 return Optional.of(handle);
             }
         } catch (IllegalAccessException | NoSuchMethodException ex) {
             LOGGER.trace(ex.getMessage(), ex);
-        }
-
-        return Optional.empty();
+            ex.printStackTrace();
+            return Optional.empty();
+        }       
     }
 
     /**
@@ -451,9 +451,9 @@ public class PluginManager<Key, Implementation> {
                     }
                 }
             }
-        } catch (Throwable ex) {
+        } catch (Throwable ex) {                        
             LOGGER.error("Unable to get implementation!");
-            LOGGER.debug(ex.getMessage(), ex);
+            LOGGER.debug(ex.getMessage(), ex);            
 
             return null;
         }

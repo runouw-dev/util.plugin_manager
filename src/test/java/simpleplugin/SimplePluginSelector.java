@@ -36,19 +36,21 @@ import java.util.Map;
  *
  * @author zmichaels
  */
-public class SimplePluginSelector implements PluginSelector<String, SimplePlugin> {
-    private final List<String> supported = new ArrayList<>();
+public final class SimplePluginSelector implements PluginSelector<String, SimplePlugin> {
+    private final List<String> supported = new ArrayList<>(2);
     
     public static SimplePluginSelector getInstance() {
         return Holder.INSTANCE;
     }
     
-    private static class Holder {
+    private static final class Holder {
         private static final SimplePluginSelector INSTANCE = new SimplePluginSelector();
+        private Holder() {}
     }
     
     private SimplePluginSelector() {
         this.supported.add("HelloWorld");
+        this.supported.add("Greeting");
     }
     
     @Override
@@ -59,6 +61,7 @@ public class SimplePluginSelector implements PluginSelector<String, SimplePlugin
     @Override
     public void registerImplements(Map<String, Class<? extends SimplePlugin>> pluginImpl) {
         pluginImpl.put("HelloWorld", HelloWorldPlugin.class);
+        pluginImpl.put("Greeting", GreetingPlugin.class);
     }
     
 }
