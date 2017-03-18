@@ -30,19 +30,19 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * A simplified implementation of MetaPlugin that can be used by most
+ * A simplified implementation of PluginHandler that can be used by most
  * implementations.
  *
  * @author zmichaels
  * @param <BaseType> the base type
  */
-public abstract class AbstractMetaPlugin<BaseType> implements MetaPlugin {
+public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
 
-    private final Map<String, MetaClass> registeredPlugins = new HashMap<>();
+    private final Map<String, PluginDescriptor> registeredPlugins = new HashMap<>();
 
     /**
      * Retrieves the PluginManager used. The simplest implementation of
-     * AbstractMetaPlugin will use one static PluginManager shared across all
+     * AbstractPluginHandler will use one static PluginManager shared across all
      * instances. This is not required. All that is required is that
      * getPluginManager is consistent.
      *
@@ -51,7 +51,7 @@ public abstract class AbstractMetaPlugin<BaseType> implements MetaPlugin {
     protected abstract PluginManager<String, BaseType> getPluginManager();
 
     @Override
-    public boolean register(final MetaClass plugin) {
+    public boolean register(final PluginDescriptor plugin) {
         if (supportsType(plugin.clazz)) {
             final Class<? extends BaseType> typedClazz = (Class<? extends BaseType>) plugin.clazz;
             final PluginSelector<String, BaseType> selector = PluginSelector.singletonSelector(plugin.lookup, typedClazz);
@@ -64,7 +64,7 @@ public abstract class AbstractMetaPlugin<BaseType> implements MetaPlugin {
             return false;
         }
     }
-    
+
     @Override
     public <T> Optional<T> newInstance(final String id) {
         return Optional.ofNullable((T) this.getPluginManager().getImplementation(id));
@@ -72,6 +72,7 @@ public abstract class AbstractMetaPlugin<BaseType> implements MetaPlugin {
 
     /**
      * Retrieves the description of the plugin (if it was registered)
+     *
      * @param id the id of the plugin
      * @return the description.
      */
@@ -82,6 +83,7 @@ public abstract class AbstractMetaPlugin<BaseType> implements MetaPlugin {
 
     /**
      * Retrieves the name of the plugin (if it was registered)
+     *
      * @param id the id of the plugin
      * @return the name
      */
@@ -92,6 +94,7 @@ public abstract class AbstractMetaPlugin<BaseType> implements MetaPlugin {
 
     /**
      * Retrieves the class definition of the plugin (if it was registered)
+     *
      * @param id the id of the plugin
      * @return the class definition
      */

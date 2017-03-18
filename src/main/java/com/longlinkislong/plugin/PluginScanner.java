@@ -50,28 +50,28 @@ import java.util.stream.StreamSupport;
  */
 public final class PluginScanner {
 
-    private final List<MetaPlugin> metaPlugins = new ArrayList<>();
-    private final Set<MetaPlugin> uniquePlugins = new HashSet<>();
+    private final List<PluginHandler> metaPlugins = new ArrayList<>();
+    private final Set<PluginHandler> uniquePlugins = new HashSet<>();
 
     /**
      * Constructs a new PluginScanner. This will automatically load all
-     * MetaPlugin instances registered via SPI.
+ PluginHandler instances registered via SPI.
      */
     public PluginScanner() {
-        final ServiceLoader<MetaPlugin> spiPlugins = ServiceLoader.load(MetaPlugin.class);
+        final ServiceLoader<PluginHandler> spiPlugins = ServiceLoader.load(PluginHandler.class);
 
-        for (MetaPlugin plugin : spiPlugins) {
+        for (PluginHandler plugin : spiPlugins) {
             addMetaPlugin(plugin);
         }
     }
 
     /**
-     * Adds a MetaPlugin
+     * Adds a PluginHandler
      *
-     * @param plugin the MetaPlugin to add
+     * @param plugin the PluginHandler to add
      * @return true if any structure changes occurred.
      */
-    public boolean addMetaPlugin(final MetaPlugin plugin) {
+    public boolean addMetaPlugin(final PluginHandler plugin) {
         if (uniquePlugins.add(plugin)) {
             metaPlugins.add(plugin);
 
@@ -82,12 +82,12 @@ public final class PluginScanner {
     }
 
     /**
-     * Removes a MetaPlugin
+     * Removes a PluginHandler
      *
-     * @param plugin the MetaPlugin to remove
+     * @param plugin the PluginHandler to remove
      * @return true if any structure changes occurred.
      */
-    public boolean removeMetaPlugin(final MetaPlugin plugin) {
+    public boolean removeMetaPlugin(final PluginHandler plugin) {
         if (uniquePlugins.remove(plugin)) {
             metaPlugins.remove(plugin);
 
@@ -102,7 +102,7 @@ public final class PluginScanner {
      *
      * @return the MetaPlugins
      */
-    public List<MetaPlugin> getPlugins() {
+    public List<PluginHandler> getPlugins() {
         return Collections.unmodifiableList(metaPlugins);
     }
 
@@ -111,18 +111,18 @@ public final class PluginScanner {
      *
      * @return the Stream of MetaPlugins
      */
-    public Stream<MetaPlugin> plugins() {
+    public Stream<PluginHandler> plugins() {
         return metaPlugins.stream();
     }
 
     /**
-     * Retrieves the MetaPlugin that registered the class definition
+     * Retrieves the PluginHandler that registered the class definition
      *
      * @param <T> the class type
      * @param supportType the class definition
-     * @return the MetaPlugin if it exists
+     * @return the PluginHandler if it exists
      */
-    public <T> Optional<MetaPlugin> getMetaPlugin(final Class<T> supportType) {
+    public <T> Optional<PluginHandler> getPluginHandler(final Class<T> supportType) {
         return plugins()
                 .filter(m -> m.supportsType(supportType))
                 .findFirst();
@@ -137,7 +137,7 @@ public final class PluginScanner {
      * @return the instance if it exists
      */
     public <T> Optional<T> newInstance(final Class<T> baseType, final String id) {
-        return getMetaPlugin(baseType)
+        return getPluginHandler(baseType)
                 .flatMap(m -> m.newInstance(id));
     }
 
@@ -206,17 +206,17 @@ public final class PluginScanner {
     }
 
     /**
-     * Processes a Stream of classes to be used as plugins. MetaPlugin handlers
-     * are loaded via SPI. A MetaPlugin is required for registering any plugins.
-     * If a plugin is registered by a MetaPlugin, any accessible static final
-     * methods with the annotation Plugin.OnLoad will execute.
+     * Processes a Stream of classes to be used as plugins. PluginHandler handlers
+ are loaded via SPI. A PluginHandler is required for registering any plugins.
+ If a plugin is registered by a PluginHandler, any accessible static final
+ methods with the annotation Plugin.OnLoad will execute.
      *
      * @param pluginStream the stream to handle.
      */
     public void scan(final Stream<Class<?>> pluginStream) {
         pluginStream
                 .filter(plugin -> plugin.isAnnotationPresent(Plugin.class))
-                .map(MetaClass::new)
+                .map(PluginDescriptor::new)
                 .map(metaClass -> Arrays.stream(metaClass.clazz.getFields())
                 .filter(PluginScanner::isStaticFinal)
                 .filter(field -> field.isAnnotationPresent(Plugin.Lookup.class))
@@ -277,7 +277,7 @@ public final class PluginScanner {
         }
     }
 
-    private static boolean process(final List<MetaPlugin> handler, final MetaClass plugin) {
+    private static boolean process(final List<PluginHandler> handler, final PluginDescriptor plugin) {
         return handler.stream()
                 .filter(h -> h.register(plugin))
                 .findFirst()

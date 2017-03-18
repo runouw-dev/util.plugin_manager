@@ -28,26 +28,26 @@ package com.longlinkislong.plugin;
 import java.util.Optional;
 
 /**
- * MetaPlugin defines the needed functionality for Plugin systems
+ * PluginHandler defines the needed functionality for Plugin systems
  *
  * @author zmichaels
  */
-public interface MetaPlugin {
+public interface PluginHandler {
 
     /**
-     * Attempts to register a MetaClass as a plugin
+     * Attempts to register a PluginDescriptor as a plugin
      *
-     * @param plugin the MetaClass to register
-     * @return true if the MetaClass was registered by this MetaPlugin
+     * @param plugin the PluginDescriptor to register
+     * @return true if the PluginDescriptor was registered by this PluginHandler
      */
-    boolean register(MetaClass plugin);
+    boolean register(PluginDescriptor plugin);
 
     /**
-     * Checks if the supplied type is handled by this MetaPlugin
+     * Checks if the supplied type is handled by this PluginHandler
      *
      * @param <T> the type to handle
      * @param theType the class definition
-     * @return true if the MetaPlugin handles the type.
+     * @return true if the PluginHandler handles the type.
      */
     <T> boolean supportsType(Class<T> theType);
 

@@ -31,7 +31,7 @@ package com.longlinkislong.plugin;
  *
  * @author zmichaels
  */
-public final class MetaClass {
+public final class PluginDescriptor {
 
     /**
      * The lookup id. Used in initializing the plugin. The default value is the
@@ -58,7 +58,7 @@ public final class MetaClass {
      *
      * @param clazz the Class instance.
      */
-    public MetaClass(final Class<?> clazz) {
+    public PluginDescriptor(final Class<?> clazz) {
         this(clazz, clazz.getSimpleName(), clazz.getName(), "");
     }
 
@@ -70,7 +70,7 @@ public final class MetaClass {
      * @param name the name
      * @param desc the description
      */
-    public MetaClass(final Class<?> clazz, final String lookup, final String name, final String desc) {
+    public PluginDescriptor(final Class<?> clazz, final String lookup, final String name, final String desc) {
         this.clazz = clazz;
         this.lookup = lookup;
         this.name = name;
@@ -78,33 +78,33 @@ public final class MetaClass {
     }
 
     /**
-     * Creates a new instance of this MetaClass with the new Lookup value.
+     * Creates a new instance of this PluginDescriptor with the new Lookup value.
      *
      * @param lookup the new lookup value.
-     * @return the new MetaClass.
+     * @return the new PluginDescriptor.
      */
-    public MetaClass withLookup(final String lookup) {
-        return new MetaClass(clazz, lookup, name, description);
+    public PluginDescriptor withLookup(final String lookup) {
+        return new PluginDescriptor(clazz, lookup, name, description);
     }
 
     /**
-     * Creates a new instance of this MetaClass with the new name value.
+     * Creates a new instance of this PluginDescriptor with the new name value.
      *
      * @param name the new name value.
-     * @return the new MetaClass.
+     * @return the new PluginDescriptor.
      */
-    public MetaClass withName(final String name) {
-        return new MetaClass(clazz, lookup, name, description);
+    public PluginDescriptor withName(final String name) {
+        return new PluginDescriptor(clazz, lookup, name, description);
     }
 
     /**
-     * Creates a new instance of this MetaClass with the new discription value.
+     * Creates a new instance of this PluginDescriptor with the new discription value.
      *
      * @param description the description value.
-     * @return the new MetaClass.
+     * @return the new PluginDescriptor.
      */
-    public MetaClass withDescription(final String description) {
-        return new MetaClass(clazz, lookup, name, description);
+    public PluginDescriptor withDescription(final String description) {
+        return new PluginDescriptor(clazz, lookup, name, description);
     }
 
     @Override
