@@ -258,28 +258,25 @@ public final class PluginScanner {
     private static PluginDescriptor descriptorFromClass(Class<?> clazz){
         PluginDescriptor descriptor = new PluginDescriptor(clazz);
         
-        List<Field> staticFinalFields = Arrays.stream(clazz.getFields())
-                .filter(PluginScanner::isStaticField)
-                .collect(Collectors.toList());
-        
-        descriptor = staticFinalFields.stream()
+        descriptor = Arrays.stream(clazz.getFields())
                 .filter(field -> field.isAnnotationPresent(Plugin.Lookup.class))
-                .map(PluginScanner::getField)
+                .map(PluginScanner::getFieldTestStaticFinal)
                 .findFirst().map(descriptor::withLookup).orElse(descriptor);
         
-        descriptor = staticFinalFields.stream()
+        descriptor = Arrays.stream(clazz.getFields())
                 .filter(field -> field.isAnnotationPresent(Plugin.Name.class))
-                .map(PluginScanner::getField)
+                .map(PluginScanner::getFieldTestStaticFinal)
                 .findFirst().map(descriptor::withName).orElse(descriptor);
         
-        descriptor = staticFinalFields.stream()
+        descriptor = Arrays.stream(clazz.getFields())
                 .filter(field -> field.isAnnotationPresent(Plugin.Description.class))
-                .map(PluginScanner::getField)
+                .map(PluginScanner::getFieldTestStaticFinal)
                 .findFirst().map(descriptor::withDescription).orElse(descriptor);
         
         return descriptor;
     }
 
+    /*
     private static boolean isStaticFinal(final Field field) {
         final int mods = field.getModifiers();
         final boolean isStatic = (mods & Modifier.STATIC) != 0;
@@ -309,8 +306,13 @@ public final class PluginScanner {
 
         return isStatic;
     }
-
-    private static void invokeMethod(final Method method) {
+    */
+    private static void invokeMethodTestStatic(final Method method) {
+        int mod = method.getModifiers();
+        if(!Modifier.isStatic(mod)){
+            throw new RuntimeException("Field: " + method.getName() + " is not static");
+        }
+        
         try {
             method.setAccessible(true);
             
@@ -322,12 +324,31 @@ public final class PluginScanner {
     
     private static void invokeOnLoadMethods(Class<?> clazz){
         Arrays.stream(clazz.getMethods())
-                .filter(PluginScanner::isStaticMethod)
                 .filter(method -> method.isAnnotationPresent(Plugin.OnLoad.class))
-                .forEach(PluginScanner::invokeMethod);
+                .forEach(PluginScanner::invokeMethodTestStatic);
     }
-
+    
+    /*
     private static String getField(final Field field) {
+        try {
+            field.setAccessible(true);
+            
+            return field.get(null).toString();
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            throw new RuntimeException("Unable to access field: " + field.getName(), ex);
+        }
+    }
+    */
+    
+    private static String getFieldTestStaticFinal(final Field field) {
+        int mod = field.getModifiers();
+        if(!Modifier.isFinal(mod)){
+            throw new RuntimeException("Field: " + field.getName() + " is not final");
+        }
+        if(!Modifier.isStatic(mod)){
+            throw new RuntimeException("Field: " + field.getName() + " is not static");
+        }
+        
         try {
             field.setAccessible(true);
             
