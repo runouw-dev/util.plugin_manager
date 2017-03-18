@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.Spliterator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -50,7 +51,7 @@ import java.util.stream.StreamSupport;
  */
 public final class PluginScanner {
 
-    private final List<PluginHandler> metaPlugins = new ArrayList<>();
+    private final List<PluginHandler> handlers = new ArrayList<>();
     private final Set<PluginHandler> uniquePlugins = new HashSet<>();
 
     /**
@@ -73,7 +74,7 @@ public final class PluginScanner {
      */
     public boolean addMetaPlugin(final PluginHandler plugin) {
         if (uniquePlugins.add(plugin)) {
-            metaPlugins.add(plugin);
+            handlers.add(plugin);
 
             return true;
         } else {
@@ -89,7 +90,7 @@ public final class PluginScanner {
      */
     public boolean removeMetaPlugin(final PluginHandler plugin) {
         if (uniquePlugins.remove(plugin)) {
-            metaPlugins.remove(plugin);
+            handlers.remove(plugin);
 
             return true;
         } else {
@@ -103,7 +104,7 @@ public final class PluginScanner {
      * @return the MetaPlugins
      */
     public List<PluginHandler> getPlugins() {
-        return Collections.unmodifiableList(metaPlugins);
+        return Collections.unmodifiableList(handlers);
     }
 
     /**
@@ -112,7 +113,7 @@ public final class PluginScanner {
      * @return the Stream of MetaPlugins
      */
     public Stream<PluginHandler> plugins() {
-        return metaPlugins.stream();
+        return handlers.stream();
     }
 
     /**
@@ -206,51 +207,92 @@ public final class PluginScanner {
     }
 
     /**
-     * Processes a Stream of classes to be used as plugins. PluginHandler handlers
- are loaded via SPI. A PluginHandler is required for registering any plugins.
- If a plugin is registered by a PluginHandler, any accessible static final
- methods with the annotation Plugin.OnLoad will execute.
+     * Processes a Stream of classes to be used as plugins. PluginHandler
+     * handlers are loaded via SPI. A PluginHandler is required for registering
+     * any plugins. If a plugin is registered by a PluginHandler, any accessible
+     * static final methods with the annotation Plugin.OnLoad will execute.
      *
      * @param pluginStream the stream to handle.
      */
     public void scan(final Stream<Class<?>> pluginStream) {
         pluginStream
                 .filter(plugin -> plugin.isAnnotationPresent(Plugin.class))
+                .map(PluginScanner::descriptorFromClass)
+                .filter(handler -> process(handlers, handler))
+                .map(handler -> handler.clazz)
+                .forEach(PluginScanner::invokeOnLoadMethods);
+        
+        /*
+        pluginStream
+                .filter(plugin -> plugin.isAnnotationPresent(Plugin.class))
                 .map(PluginDescriptor::new)
-                .map(metaClass -> Arrays.stream(metaClass.clazz.getFields())
+                .map(descriptor -> Arrays.stream(descriptor.clazz.getFields())
                 .filter(PluginScanner::isStaticFinal)
                 .filter(field -> field.isAnnotationPresent(Plugin.Lookup.class))
                 .map(PluginScanner::getField)
                 .findFirst()
-                .map(metaClass::withLookup)
-                .orElse(metaClass))
-                .map(metaClass -> Arrays.stream(metaClass.clazz.getFields())
+                .map(descriptor::withLookup)
+                .orElse(descriptor))
+                .map(descriptor -> Arrays.stream(descriptor.clazz.getFields())
                 .filter(PluginScanner::isStaticFinal)
                 .filter(field -> field.isAnnotationPresent(Plugin.Description.class))
                 .map(PluginScanner::getField)
                 .findFirst()
-                .map(metaClass::withDescription)
-                .orElse(metaClass))
-                .map(metaClass -> Arrays.stream(metaClass.clazz.getFields())
+                .map(descriptor::withDescription)
+                .orElse(descriptor))
+                .map(descriptor -> Arrays.stream(descriptor.clazz.getFields())
                 .filter(PluginScanner::isStaticFinal)
                 .filter(field -> field.isAnnotationPresent(Plugin.Name.class))
                 .map(PluginScanner::getField)
                 .findFirst()
-                .map(metaClass::withDescription)
-                .orElse(metaClass))
-                .filter(metaPlugin -> process(metaPlugins, metaPlugin))
-                .map(metaPlugin -> metaPlugin.clazz)
-                .flatMap(metaPlugin -> Arrays.stream(metaPlugin.getMethods()))
+                .map(descriptor::withDescription)
+                .orElse(descriptor))
+                .filter(handler -> process(handlers, handler))
+                .map(handler -> handler.clazz)
+                .flatMap(handler -> Arrays.stream(handler.getMethods()))
                 .filter(PluginScanner::isStaticFinal)
                 .forEach(PluginScanner::invokeMethod);
+        */
+    }
+    
+    private static PluginDescriptor descriptorFromClass(Class<?> clazz){
+        PluginDescriptor descriptor = new PluginDescriptor(clazz);
+        
+        List<Field> staticFinalFields = Arrays.stream(clazz.getFields())
+                .filter(PluginScanner::isStaticField)
+                .collect(Collectors.toList());
+        
+        descriptor = staticFinalFields.stream()
+                .filter(field -> field.isAnnotationPresent(Plugin.Lookup.class))
+                .map(PluginScanner::getField)
+                .findFirst().map(descriptor::withLookup).orElse(descriptor);
+        
+        descriptor = staticFinalFields.stream()
+                .filter(field -> field.isAnnotationPresent(Plugin.Name.class))
+                .map(PluginScanner::getField)
+                .findFirst().map(descriptor::withName).orElse(descriptor);
+        
+        descriptor = staticFinalFields.stream()
+                .filter(field -> field.isAnnotationPresent(Plugin.Description.class))
+                .map(PluginScanner::getField)
+                .findFirst().map(descriptor::withDescription).orElse(descriptor);
+        
+        return descriptor;
     }
 
     private static boolean isStaticFinal(final Field field) {
         final int mods = field.getModifiers();
         final boolean isStatic = (mods & Modifier.STATIC) != 0;
         final boolean isFinal = (mods & Modifier.FINAL) != 0;
-
-        return isStatic && isFinal && field.isAccessible();
+        
+        return isStatic && isFinal;
+    }
+    
+    private static boolean isStaticField(final Field field) {
+        final int mods = field.getModifiers();
+        final boolean isStatic = (mods & Modifier.STATIC) != 0;
+        
+        return isStatic;
     }
 
     private static boolean isStaticFinal(final Method method) {
@@ -258,19 +300,37 @@ public final class PluginScanner {
         final boolean isStatic = (mods & Modifier.STATIC) != 0;
         final boolean isFinal = (mods & Modifier.FINAL) != 0;
 
-        return isStatic && isFinal && method.isAccessible();
+        return isStatic && isFinal;
+    }
+    
+    private static boolean isStaticMethod(final Method method) {
+        final int mods = method.getModifiers();
+        final boolean isStatic = (mods & Modifier.STATIC) != 0;
+
+        return isStatic;
     }
 
     private static void invokeMethod(final Method method) {
         try {
+            method.setAccessible(true);
+            
             method.invoke(null);
         } catch (IllegalArgumentException | InvocationTargetException | IllegalAccessException ex) {
             throw new RuntimeException("Unable to invoke method: " + method.getName(), ex);
         }
     }
+    
+    private static void invokeOnLoadMethods(Class<?> clazz){
+        Arrays.stream(clazz.getMethods())
+                .filter(PluginScanner::isStaticMethod)
+                .filter(method -> method.isAnnotationPresent(Plugin.OnLoad.class))
+                .forEach(PluginScanner::invokeMethod);
+    }
 
     private static String getField(final Field field) {
         try {
+            field.setAccessible(true);
+            
             return field.get(null).toString();
         } catch (IllegalArgumentException | IllegalAccessException ex) {
             throw new RuntimeException("Unable to access field: " + field.getName(), ex);

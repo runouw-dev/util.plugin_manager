@@ -103,8 +103,6 @@ public class TestNewPlugins {
         
         cat = scanner.newInstance(Animal.class, "Cat").get();
         assertEquals(cat.say(), "Bzzrrt");
-        
-        assertTrue(CatModded.MOD_LOADED);
     }
     
     @Test
