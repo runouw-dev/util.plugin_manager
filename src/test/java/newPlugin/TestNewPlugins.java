@@ -23,8 +23,6 @@ public class TestNewPlugins {
         
         @Plugin.GetHandler
         public static PluginHandler getHandler(){
-            System.out.println("GET HANDLER CALLED");
-            
             return new BasicPluginHandler(Animal.class);
         }
     }
