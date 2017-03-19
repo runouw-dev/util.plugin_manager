@@ -346,8 +346,6 @@ public final class PluginScanner {
             throw new RuntimeException("Method: " + method.getName() + " is not static");
         }
         
-        System.out.println("Invoking GetHandler");
-        
         try {
             method.setAccessible(true);
             
