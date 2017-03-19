@@ -39,8 +39,6 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -76,7 +74,7 @@ public final class PluginScanner {
      */
     public boolean addPluginHandler(final PluginHandler plugin) {
         if (uniquePlugins.add(plugin)) {
-            handlers.add(plugin);
+            handlers.add(0, plugin);
 
             return true;
         } else {
@@ -90,7 +88,7 @@ public final class PluginScanner {
      * @param plugin the PluginHandler to remove
      * @return true if any structure changes occurred.
      */
-    public boolean removeMetaPlugin(final PluginHandler plugin) {
+    public boolean removePluginHandler(final PluginHandler plugin) {
         if (uniquePlugins.remove(plugin)) {
             handlers.remove(plugin);
 
