@@ -39,6 +39,8 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.Spliterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -62,7 +64,7 @@ public final class PluginScanner {
         final ServiceLoader<PluginHandler> spiPlugins = ServiceLoader.load(PluginHandler.class);
 
         for (PluginHandler plugin : spiPlugins) {
-            addMetaPlugin(plugin);
+            addPluginHandler(plugin);
         }
     }
 
@@ -72,7 +74,7 @@ public final class PluginScanner {
      * @param plugin the PluginHandler to add
      * @return true if any structure changes occurred.
      */
-    public boolean addMetaPlugin(final PluginHandler plugin) {
+    public boolean addPluginHandler(final PluginHandler plugin) {
         if (uniquePlugins.add(plugin)) {
             handlers.add(plugin);
 
@@ -215,12 +217,22 @@ public final class PluginScanner {
      * @param pluginStream the stream to handle.
      */
     public void scan(final Stream<Class<?>> pluginStream) {
-        pluginStream
-                .filter(plugin -> plugin.isAnnotationPresent(Plugin.class))
+        List<Class<?>> clz = pluginStream.collect(Collectors.toList());
+        
+        clz.stream()
+                .flatMap(handler -> Arrays.stream(handler.getMethods()))
+                .filter(mth -> mth.isAnnotationPresent(Plugin.GetHandler.class))
+                .forEach(this::invokeGetHandler);
+        
+        clz.stream()
+                .filter(cl -> cl.isAnnotationPresent(Plugin.class))
                 .map(PluginScanner::descriptorFromClass)
-                .filter(handler -> process(handlers, handler))
-                .map(handler -> handler.clazz)
-                .forEach(PluginScanner::invokeOnLoadMethods);
+                .forEach(this::process);
+        
+        clz.stream()
+                .flatMap(handler -> Arrays.stream(handler.getMethods()))
+                .filter(mth -> mth.isAnnotationPresent(Plugin.OnLoad.class))
+                .forEach(PluginScanner::invokeMethodTestStatic);
         
         /*
         pluginStream
@@ -310,7 +322,7 @@ public final class PluginScanner {
     private static void invokeMethodTestStatic(final Method method) {
         int mod = method.getModifiers();
         if(!Modifier.isStatic(mod)){
-            throw new RuntimeException("Field: " + method.getName() + " is not static");
+            throw new RuntimeException("Method: " + method.getName() + " is not static");
         }
         
         try {
@@ -326,6 +338,25 @@ public final class PluginScanner {
         Arrays.stream(clazz.getMethods())
                 .filter(method -> method.isAnnotationPresent(Plugin.OnLoad.class))
                 .forEach(PluginScanner::invokeMethodTestStatic);
+    }
+    
+    private void invokeGetHandler(Method method){
+        int mod = method.getModifiers();
+        if(!Modifier.isStatic(mod)){
+            throw new RuntimeException("Method: " + method.getName() + " is not static");
+        }
+        
+        System.out.println("Invoking GetHandler");
+        
+        try {
+            method.setAccessible(true);
+            
+            PluginHandler hnd = (PluginHandler) method.invoke(null);
+            
+            addPluginHandler(hnd);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            throw new RuntimeException("Unable to invoke GetHandler method: " + method.getName(), ex);
+        }
     }
     
     /*
@@ -358,8 +389,8 @@ public final class PluginScanner {
         }
     }
 
-    private static boolean process(final List<PluginHandler> handler, final PluginDescriptor plugin) {
-        return handler.stream()
+    private boolean process(final PluginDescriptor plugin) {
+        return this.handlers.stream()
                 .filter(h -> h.register(plugin))
                 .findFirst()
                 .isPresent();

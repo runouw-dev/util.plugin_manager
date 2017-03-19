@@ -80,4 +80,10 @@ public @interface Plugin {
     public static @interface OnLoad {
 
     }
+    
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD})
+    public static @interface GetHandler {
+        
+    }
 }

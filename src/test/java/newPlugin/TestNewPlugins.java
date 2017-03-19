@@ -7,6 +7,7 @@ package newPlugin;
 
 import com.longlinkislong.plugin.BasicPluginHandler;
 import com.longlinkislong.plugin.Plugin;
+import com.longlinkislong.plugin.PluginHandler;
 import com.longlinkislong.plugin.PluginScanner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -19,6 +20,13 @@ import org.junit.Test;
 public class TestNewPlugins {
     public interface Animal {
         String say();
+        
+        @Plugin.GetHandler
+        public static PluginHandler getHandler(){
+            System.out.println("GET HANDLER CALLED");
+            
+            return new BasicPluginHandler(Animal.class);
+        }
     }
     
     @Plugin
@@ -70,10 +78,19 @@ public class TestNewPlugins {
         public String say() { return "Woof"; }
     }
     
+    public static class InitClass{
+        private static boolean MOD_LOADED = false;
+        
+        @Plugin.OnLoad
+        public static void init(){
+            MOD_LOADED = true;
+        }
+    }
+    
     @Test
     public void TestBasic(){
         PluginScanner scanner = new PluginScanner();
-        scanner.addMetaPlugin(new BasicPluginHandler(Animal.class));
+        scanner.addPluginHandler(new BasicPluginHandler(Animal.class));
         
         scanner.scan(Cat.class, Dog.class);
         
@@ -85,9 +102,22 @@ public class TestNewPlugins {
     }
     
     @Test
+    public void TestScanForPluginHandler(){
+        PluginScanner scanner = new PluginScanner();
+        
+        scanner.scan(Animal.class, Cat.class, Dog.class);
+        
+        Animal cat = scanner.newInstance(Animal.class, "Cat").get();
+        Animal dog = scanner.newInstance(Animal.class, "Dog").get();
+        
+        assertEquals(cat.say(), "Meow");
+        assertEquals(dog.say(), "Woof");
+    }
+    
+    @Test
     public void TestUpdate(){
         PluginScanner scanner = new PluginScanner();
-        scanner.addMetaPlugin(new BasicPluginHandler(Animal.class));
+        scanner.addPluginHandler(new BasicPluginHandler(Animal.class));
         
         scanner.scan(Cat.class, Dog.class);
         
@@ -108,21 +138,19 @@ public class TestNewPlugins {
     @Test
     public void TestOnLoad(){
         PluginScanner scanner = new PluginScanner();
-        scanner.addMetaPlugin(new BasicPluginHandler(Animal.class));
+        scanner.addPluginHandler(new BasicPluginHandler(Animal.class));
         
-        scanner.scan(CatModded.class);
-        
-        Animal cat = scanner.newInstance(Animal.class, "Cat").get();
+        scanner.scan(CatModded.class, InitClass.class);
         
         assertTrue(CatModded.MOD_LOADED);
+        assertTrue(InitClass.MOD_LOADED);
     }
     
     @Test
     public void TestAll(){
         PluginScanner scanner = new PluginScanner();
-        scanner.addMetaPlugin(new BasicPluginHandler(Animal.class));
         
-        scanner.scan(Cat.class, Dog.class);
+        scanner.scan(Animal.class, Cat.class, Dog.class);
         
         Animal cat = scanner.newInstance(Animal.class, "Cat").get();
         Animal dog = scanner.newInstance(Animal.class, "Dog").get();
@@ -132,11 +160,12 @@ public class TestNewPlugins {
         
         // simulating the old plugin being updated by a new one
         // such as a run-time update and refresh
-        scanner.scan(CatModded.class);
+        scanner.scan(CatModded.class, InitClass.class);
         
         cat = scanner.newInstance(Animal.class, "Cat").get();
         assertEquals(cat.say(), "Bzzrrt");
         
         assertTrue(CatModded.MOD_LOADED);
+        assertTrue(InitClass.MOD_LOADED);
     }
 }
