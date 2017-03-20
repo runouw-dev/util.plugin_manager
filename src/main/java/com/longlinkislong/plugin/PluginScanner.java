@@ -39,7 +39,6 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -56,7 +55,7 @@ public final class PluginScanner {
 
     /**
      * Constructs a new PluginScanner. This will automatically load all
- PluginHandler instances registered via SPI.
+     * PluginHandler instances registered via SPI.
      */
     public PluginScanner() {
         final ServiceLoader<PluginHandler> spiPlugins = ServiceLoader.load(PluginHandler.class);
@@ -215,170 +214,87 @@ public final class PluginScanner {
      * @param pluginStream the stream to handle.
      */
     public void scan(final Stream<Class<?>> pluginStream) {
-        List<Class<?>> clz = pluginStream.collect(Collectors.toList());
-        
-        clz.stream()
-                .flatMap(handler -> Arrays.stream(handler.getMethods()))
-                .filter(mth -> mth.isAnnotationPresent(Plugin.GetHandler.class))
-                .forEach(this::invokeGetHandler);
-        
-        clz.stream()
-                .filter(cl -> cl.isAnnotationPresent(Plugin.class))
+        pluginStream
+                //NOTE: this makes it illegal to interface to the handler inside any onLoad annotated method.
+                .map(clazz -> {
+                    for (Method method : clazz.getDeclaredMethods()) {                        
+                        if (method.isAnnotationPresent(Plugin.GetHandler.class)) {
+                            this.invokeGetHandler(method);
+                        } else if (method.isAnnotationPresent(Plugin.OnLoad.class)) {
+                            invokeMethodTestStatic(method);
+                        }
+                    }
+
+                    return clazz;
+                })
+                .filter(clazz -> clazz.isAnnotationPresent(Plugin.class))
                 .map(PluginScanner::descriptorFromClass)
                 .forEach(this::process);
-        
-        clz.stream()
-                .flatMap(handler -> Arrays.stream(handler.getMethods()))
-                .filter(mth -> mth.isAnnotationPresent(Plugin.OnLoad.class))
-                .forEach(PluginScanner::invokeMethodTestStatic);
-        
-        /*
-        pluginStream
-                .filter(plugin -> plugin.isAnnotationPresent(Plugin.class))
-                .map(PluginDescriptor::new)
-                .map(descriptor -> Arrays.stream(descriptor.clazz.getFields())
-                .filter(PluginScanner::isStaticFinal)
-                .filter(field -> field.isAnnotationPresent(Plugin.Lookup.class))
-                .map(PluginScanner::getField)
-                .findFirst()
-                .map(descriptor::withLookup)
-                .orElse(descriptor))
-                .map(descriptor -> Arrays.stream(descriptor.clazz.getFields())
-                .filter(PluginScanner::isStaticFinal)
-                .filter(field -> field.isAnnotationPresent(Plugin.Description.class))
-                .map(PluginScanner::getField)
-                .findFirst()
-                .map(descriptor::withDescription)
-                .orElse(descriptor))
-                .map(descriptor -> Arrays.stream(descriptor.clazz.getFields())
-                .filter(PluginScanner::isStaticFinal)
-                .filter(field -> field.isAnnotationPresent(Plugin.Name.class))
-                .map(PluginScanner::getField)
-                .findFirst()
-                .map(descriptor::withDescription)
-                .orElse(descriptor))
-                .filter(handler -> process(handlers, handler))
-                .map(handler -> handler.clazz)
-                .flatMap(handler -> Arrays.stream(handler.getMethods()))
-                .filter(PluginScanner::isStaticFinal)
-                .forEach(PluginScanner::invokeMethod);
-        */
-    }
-    
-    private static PluginDescriptor descriptorFromClass(Class<?> clazz){
-        PluginDescriptor descriptor = new PluginDescriptor(clazz);
-        
-        descriptor = Arrays.stream(clazz.getFields())
-                .filter(field -> field.isAnnotationPresent(Plugin.Lookup.class))
-                .map(PluginScanner::getFieldTestStaticFinal)
-                .findFirst().map(descriptor::withLookup).orElse(descriptor);
-        
-        descriptor = Arrays.stream(clazz.getFields())
-                .filter(field -> field.isAnnotationPresent(Plugin.Name.class))
-                .map(PluginScanner::getFieldTestStaticFinal)
-                .findFirst().map(descriptor::withName).orElse(descriptor);
-        
-        descriptor = Arrays.stream(clazz.getFields())
-                .filter(field -> field.isAnnotationPresent(Plugin.Description.class))
-                .map(PluginScanner::getFieldTestStaticFinal)
-                .findFirst().map(descriptor::withDescription).orElse(descriptor);
-        
-        return descriptor;
     }
 
-    /*
-    private static boolean isStaticFinal(final Field field) {
-        final int mods = field.getModifiers();
-        final boolean isStatic = (mods & Modifier.STATIC) != 0;
-        final boolean isFinal = (mods & Modifier.FINAL) != 0;
-        
-        return isStatic && isFinal;
-    }
-    
-    private static boolean isStaticField(final Field field) {
-        final int mods = field.getModifiers();
-        final boolean isStatic = (mods & Modifier.STATIC) != 0;
-        
-        return isStatic;
+    private static PluginDescriptor descriptorFromClass(Class<?> clazz) {
+        return Arrays.stream(clazz.getFields())
+                .reduce(new PluginDescriptor(clazz), (desc, field) -> {
+                    if (field.isAnnotationPresent(Plugin.Lookup.class)) {
+                        desc = desc.withLookup(getFieldTestStaticFinal(field));
+                    }
+
+                    if (field.isAnnotationPresent(Plugin.Name.class)) {
+                        desc = desc.withName(getFieldTestStaticFinal(field));
+                    }
+
+                    if (field.isAnnotationPresent(Plugin.Description.class)) {
+                        desc = desc.withDescription(getFieldTestStaticFinal(field));
+                    }
+
+                    return desc;
+                }, PluginDescriptor::combine);
     }
 
-    private static boolean isStaticFinal(final Method method) {
-        final int mods = method.getModifiers();
-        final boolean isStatic = (mods & Modifier.STATIC) != 0;
-        final boolean isFinal = (mods & Modifier.FINAL) != 0;
-
-        return isStatic && isFinal;
-    }
-    
-    private static boolean isStaticMethod(final Method method) {
-        final int mods = method.getModifiers();
-        final boolean isStatic = (mods & Modifier.STATIC) != 0;
-
-        return isStatic;
-    }
-    */
     private static void invokeMethodTestStatic(final Method method) {
         int mod = method.getModifiers();
-        if(!Modifier.isStatic(mod)){
+        if (!Modifier.isStatic(mod)) {
             throw new RuntimeException("Method: " + method.getName() + " is not static");
         }
-        
+
         try {
             method.setAccessible(true);
-            
+
             method.invoke(null);
         } catch (IllegalArgumentException | InvocationTargetException | IllegalAccessException ex) {
             throw new RuntimeException("Unable to invoke method: " + method.getName(), ex);
         }
     }
-    
-    private static void invokeOnLoadMethods(Class<?> clazz){
-        Arrays.stream(clazz.getMethods())
-                .filter(method -> method.isAnnotationPresent(Plugin.OnLoad.class))
-                .forEach(PluginScanner::invokeMethodTestStatic);
-    }
-    
-    private void invokeGetHandler(Method method){
+
+    private void invokeGetHandler(Method method) {
         int mod = method.getModifiers();
-        if(!Modifier.isStatic(mod)){
+        if (!Modifier.isStatic(mod)) {
             throw new RuntimeException("Method: " + method.getName() + " is not static");
         }
-        
+
         try {
             method.setAccessible(true);
-            
+
             PluginHandler hnd = (PluginHandler) method.invoke(null);
-            
+
             addPluginHandler(hnd);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
             throw new RuntimeException("Unable to invoke GetHandler method: " + method.getName(), ex);
         }
     }
     
-    /*
-    private static String getField(final Field field) {
-        try {
-            field.setAccessible(true);
-            
-            return field.get(null).toString();
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
-            throw new RuntimeException("Unable to access field: " + field.getName(), ex);
-        }
-    }
-    */
-    
     private static String getFieldTestStaticFinal(final Field field) {
         int mod = field.getModifiers();
-        if(!Modifier.isFinal(mod)){
+        if (!Modifier.isFinal(mod)) {
             throw new RuntimeException("Field: " + field.getName() + " is not final");
         }
-        if(!Modifier.isStatic(mod)){
+        if (!Modifier.isStatic(mod)) {
             throw new RuntimeException("Field: " + field.getName() + " is not static");
         }
-        
+
         try {
             field.setAccessible(true);
-            
+
             return field.get(null).toString();
         } catch (IllegalArgumentException | IllegalAccessException ex) {
             throw new RuntimeException("Unable to access field: " + field.getName(), ex);

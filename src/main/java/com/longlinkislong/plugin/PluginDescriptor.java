@@ -52,6 +52,65 @@ public final class PluginDescriptor {
     public final Class<?> clazz;
 
     /**
+     * Checks if the name field is currently the default value.
+     *
+     * @return true if the Name field was never changed.
+     */
+    public boolean isNameDefault() {
+        return this.clazz.getName().equals(this.name);
+    }
+
+    /**
+     * Checks if the lookup field is currently the default value.
+     *
+     * @return true if the Lookup field was never changed.
+     */
+    public boolean isLookupDefault() {
+        return this.clazz.getSimpleName().equals(this.lookup);
+    }
+
+    /**
+     * Checks if the description field is currently the default value.
+     *
+     * @return true if the Description field was never changed.
+     */
+    public boolean isDescriptionDefault() {
+        return this.description.isEmpty();
+    }
+
+    /**
+     * Merges the left hand side PluginDescriptor with the right hand side
+     * PluginDescriptor. Changes will only be made when a field in the lhs
+     * PluginDescriptor is still the default value.
+     *
+     * @param lhs the identity PluginDescriptor
+     * @param rhs the difference PluginDescriptor
+     * @return merged PluginDescriptor or the lhs instance if none of the values
+     * in the lhs are default.
+     */
+    public static PluginDescriptor combine(final PluginDescriptor lhs, final PluginDescriptor rhs) {
+        if (lhs.clazz != rhs.clazz) {
+            throw new IllegalStateException("Cannot merge two different PluginDescriptors!");
+        }
+
+        PluginDescriptor out = lhs;
+
+        if (lhs.isNameDefault()) {
+            out = lhs.withName(rhs.name);
+        }
+
+        if (lhs.isLookupDefault()) {
+            out = lhs.withLookup(rhs.lookup);
+        }
+
+        if (lhs.isDescriptionDefault()) {
+            out = lhs.withDescription(rhs.description);
+        }
+
+        return out;
+    }
+
+    /**
      * Constructs a new MetaClass from the supplied Class. The lookup will be
      * initialized with the simple name, the name will be initialized with the
      * class name, and the description will be initialized as an empty String.
@@ -78,7 +137,8 @@ public final class PluginDescriptor {
     }
 
     /**
-     * Creates a new instance of this PluginDescriptor with the new Lookup value.
+     * Creates a new instance of this PluginDescriptor with the new Lookup
+     * value.
      *
      * @param lookup the new lookup value.
      * @return the new PluginDescriptor.
@@ -98,7 +158,8 @@ public final class PluginDescriptor {
     }
 
     /**
-     * Creates a new instance of this PluginDescriptor with the new discription value.
+     * Creates a new instance of this PluginDescriptor with the new discription
+     * value.
      *
      * @param description the description value.
      * @return the new PluginDescriptor.
@@ -109,6 +170,22 @@ public final class PluginDescriptor {
 
     @Override
     public String toString() {
-        return String.format("MetaClass [id=%s name=%s desc=%s]", lookup, name, description);
+        final StringBuilder out = new StringBuilder(512);
+        
+        out.append("PluginDescriptor [lookup=");
+        out.append(this.lookup);
+        out.append(" name=");
+        out.append(this.name);
+        
+        if (this.isDescriptionDefault()) {
+            // do nothing
+        } else {
+            out.append(" desc=");
+            out.append(this.description);
+        }
+        
+        out.append("]");
+        
+        return out.toString();
     }
 }
