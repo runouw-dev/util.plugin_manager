@@ -9,6 +9,7 @@ import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
@@ -17,6 +18,7 @@ import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -385,12 +387,33 @@ public final class ReflectionUtil {
     }
 
     /**
-     * Sets the method as accessible. This will ignore JVM privileges for invoke.
+     * Sets the method as accessible. This will ignore JVM privileges for
+     * invoke.
+     *
      * @param method the method.
      * @return the method.
      */
     public static Method setAccessible(final Method method) {
         method.setAccessible(true);
         return method;
+    }
+
+    /**
+     * Invokes a static method and retrieves any result. All exceptions will be
+     * logged.
+     *
+     * @param <ReturnT> the return type.
+     * @param method the method to invoke.
+     * @param params optional parameters.
+     * @return the return type if any. May return an empty Optional if the
+     * method returned null or there was no return or if an exception occurred.
+     */
+    public static <ReturnT> Optional<ReturnT> invokeStatic(final Method method, final Object... params) {
+        try {
+            return Optional.ofNullable((ReturnT) method.invoke(null, params));
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+            LOGGER.debug(ex.getMessage(), ex);
+            return Optional.empty();
+        }
     }
 }
