@@ -74,7 +74,7 @@ public final class PluginDescriptor {
      * @param anno the annotation to search for.
      * @return the list of annotated values.
      */
-    public List<Object> getAnnotatedFieldObjects(final Class<? extends Annotation> anno) {
+    public List<Object> getAnnotatedStaticFinalFieldObjects(final Class<? extends Annotation> anno) {
         return annotatedFields(anno)
                 .filter(ReflectionUtil::isStaticFinal)
                 .map(ReflectionUtil::setAccessible)
