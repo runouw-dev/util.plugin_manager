@@ -68,22 +68,4 @@ public @interface Plugin {
     @Target({ElementType.FIELD})
     public static @interface Name {
     }
-
-    /**
-     * A static entry point for the plugin. OnLoad is called via reflection
-     * after the plugin is registered. Multiple methods can be tagged with an
-     * OnLoad annotation. The intended target should be a public static void
-     * method.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD})
-    public static @interface OnLoad {
-
-    }
-    
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD})
-    public static @interface GetHandler {
-        
-    }
 }

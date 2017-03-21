@@ -215,18 +215,6 @@ public final class PluginScanner {
      */
     public void scan(final Stream<Class<?>> pluginStream) {
         pluginStream
-                //NOTE: this makes it illegal to interface to the handler inside any onLoad annotated method.
-                .map(clazz -> {
-                    for (Method method : clazz.getDeclaredMethods()) {                        
-                        if (method.isAnnotationPresent(Plugin.GetHandler.class)) {
-                            this.invokeGetHandler(method);
-                        } else if (method.isAnnotationPresent(Plugin.OnLoad.class)) {
-                            invokeMethodTestStatic(method);
-                        }
-                    }
-
-                    return clazz;
-                })
                 .filter(clazz -> clazz.isAnnotationPresent(Plugin.class))
                 .map(PluginScanner::descriptorFromClass)
                 .forEach(this::process);
@@ -249,38 +237,6 @@ public final class PluginScanner {
 
                     return desc;
                 }, PluginDescriptor::combine);
-    }
-
-    private static void invokeMethodTestStatic(final Method method) {
-        int mod = method.getModifiers();
-        if (!Modifier.isStatic(mod)) {
-            throw new RuntimeException("Method: " + method.getName() + " is not static");
-        }
-
-        try {
-            method.setAccessible(true);
-
-            method.invoke(null);
-        } catch (IllegalArgumentException | InvocationTargetException | IllegalAccessException ex) {
-            throw new RuntimeException("Unable to invoke method: " + method.getName(), ex);
-        }
-    }
-
-    private void invokeGetHandler(Method method) {
-        int mod = method.getModifiers();
-        if (!Modifier.isStatic(mod)) {
-            throw new RuntimeException("Method: " + method.getName() + " is not static");
-        }
-
-        try {
-            method.setAccessible(true);
-
-            PluginHandler hnd = (PluginHandler) method.invoke(null);
-
-            addPluginHandler(hnd);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            throw new RuntimeException("Unable to invoke GetHandler method: " + method.getName(), ex);
-        }
     }
     
     private static String getFieldTestStaticFinal(final Field field) {
