@@ -25,10 +25,6 @@
  */
 package com.longlinkislong.plugin;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,6 +35,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.Spliterator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -146,9 +143,10 @@ public final class PluginScanner {
      * [code]scan(plugins, 0)[/code]
      *
      * @param plugins the array of plugins.
+     * @return a list of all processed plugins
      */
-    public void scan(final Class<?>... plugins) {
-        scan(plugins, 0);
+    public List<PluginDescriptor> scan(final Class<?>... plugins) {
+        return scan(plugins, 0);
     }
 
     /**
@@ -157,9 +155,10 @@ public final class PluginScanner {
      *
      * @param plugins the array of plugins.
      * @param offset the offset to begin scanning the plugins.
+     * @return a list of all processed plugins
      */
-    public void scan(final Class<?>[] plugins, final int offset) {
-        scan(plugins, offset, plugins.length - offset);
+    public List<PluginDescriptor> scan(final Class<?>[] plugins, final int offset) {
+        return scan(plugins, offset, plugins.length - offset);
     }
 
     /**
@@ -169,9 +168,11 @@ public final class PluginScanner {
      * @param plugins the array of plugins.
      * @param offset the offset to begin scanning the plugins.
      * @param length the number of plugins to scan.
+     * @return a list of all processed plugins
      */
-    public void scan(final Class<?>[] plugins, final int offset, final int length) {
-        scan(Arrays.stream(plugins, offset, offset + length));
+    public List<PluginDescriptor> scan(final Class<?>[] plugins, final int offset, final int length) {
+        return scan(Arrays.stream(plugins, offset, offset + length))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -179,9 +180,10 @@ public final class PluginScanner {
      * calling [code]scan(StreamSupport.stream(splitPlugins, false))[/code]
      *
      * @param splitPlugins the plugins to scan.
+     * @return a Spliterator that iterates over the processed plugins
      */
-    public void scan(final Spliterator<Class<?>> splitPlugins) {
-        scan(StreamSupport.stream(splitPlugins, false));
+    public Spliterator<PluginDescriptor> scan(final Spliterator<Class<?>> splitPlugins) {
+        return scan(StreamSupport.stream(splitPlugins, false)).spliterator();
     }
 
     /**
@@ -212,50 +214,40 @@ public final class PluginScanner {
      * static final methods with the annotation Plugin.OnLoad will execute.
      *
      * @param pluginStream the stream to handle.
+     * @return a Stream of all processed plugins
      */
-    public void scan(final Stream<Class<?>> pluginStream) {
-        pluginStream
-                .filter(clazz -> clazz.isAnnotationPresent(Plugin.class))
+    public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {
+        return pluginStream
+                .filter(ReflectionUtil.classAnnotationTest(Plugin.class))
                 .map(PluginScanner::descriptorFromClass)
-                .forEach(this::process);
+                .filter(this::process);
     }
 
-    private static PluginDescriptor descriptorFromClass(Class<?> clazz) {
+    private static PluginDescriptor descriptorFromClass(Class<?> clazz) {        
         return Arrays.stream(clazz.getFields())
+                .filter(ReflectionUtil::isStaticFinal)
                 .reduce(new PluginDescriptor(clazz), (desc, field) -> {
                     if (field.isAnnotationPresent(Plugin.Lookup.class)) {
-                        desc = desc.withLookup(getFieldTestStaticFinal(field));
+                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
+                                                
+                        desc = desc.withLookup(value.orElseThrow(() -> new RuntimeException("Unable to evaluate value!")));
                     }
 
                     if (field.isAnnotationPresent(Plugin.Name.class)) {
-                        desc = desc.withName(getFieldTestStaticFinal(field));
+                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
+                        
+                        desc = desc.withName(value.orElseThrow(() -> new RuntimeException("Unable to evaluate name!")));
                     }
 
                     if (field.isAnnotationPresent(Plugin.Description.class)) {
-                        desc = desc.withDescription(getFieldTestStaticFinal(field));
+                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
+                        
+                        desc = desc.withDescription(value.orElseThrow(() -> new RuntimeException("Unable to evaluate description!")));
                     }
 
                     return desc;
                 }, PluginDescriptor::combine);
-    }
-    
-    private static String getFieldTestStaticFinal(final Field field) {
-        int mod = field.getModifiers();
-        if (!Modifier.isFinal(mod)) {
-            throw new RuntimeException("Field: " + field.getName() + " is not final");
-        }
-        if (!Modifier.isStatic(mod)) {
-            throw new RuntimeException("Field: " + field.getName() + " is not static");
-        }
-
-        try {
-            field.setAccessible(true);
-
-            return field.get(null).toString();
-        } catch (IllegalArgumentException | IllegalAccessException ex) {
-            throw new RuntimeException("Unable to access field: " + field.getName(), ex);
-        }
-    }
+    }    
 
     private boolean process(final PluginDescriptor plugin) {
         return this.handlers.stream()

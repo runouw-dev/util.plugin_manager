@@ -66,12 +66,12 @@ public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
     }
 
     @Override
-    public <T> Optional<T> newInstance(final String id) {
+    public <T> Optional<T> newInstance(final String id, Object... params) {
         if(!this.getPluginManager().listPlugins().contains(id)){
             return Optional.empty();
         }
         
-        return Optional.ofNullable((T) this.getPluginManager().getImplementation(id));
+        return Optional.ofNullable((T) this.getPluginManager().getImplementation(id, params));
     }
 
     /**

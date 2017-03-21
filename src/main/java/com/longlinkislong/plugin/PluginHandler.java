@@ -57,8 +57,9 @@ public interface PluginHandler {
      * @param <T> the type to attempt to cast to. This exists mostly for
      * syntactical sugar.
      * @param id the plugin id.
+     * @param params
      * @return the new instance. May return empty if no plugins were registered
      * with the given id.
      */
-    <T> Optional<T> newInstance(String id);
+    <T> Optional<T> newInstance(String id, Object... params);
 }
