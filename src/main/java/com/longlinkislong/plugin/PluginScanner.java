@@ -45,8 +45,7 @@ import java.util.stream.StreamSupport;
  *
  * @author zmichaels
  */
-public final class PluginScanner {
-
+public final class PluginScanner {    
     private final List<PluginHandler> handlers = new ArrayList<>();
     private final Set<PluginHandler> uniquePlugins = new HashSet<>();
 
@@ -57,7 +56,7 @@ public final class PluginScanner {
     public PluginScanner() {
         final ServiceLoader<PluginHandler> spiPlugins = ServiceLoader.load(PluginHandler.class);
 
-        for (PluginHandler plugin : spiPlugins) {
+        for (PluginHandler plugin : spiPlugins) {            
             addPluginHandler(plugin);
         }
     }
@@ -216,7 +215,7 @@ public final class PluginScanner {
      * @param pluginStream the stream to handle.
      * @return a Stream of all processed plugins
      */
-    public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {
+    public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {        
         return pluginStream
                 .filter(ReflectionUtil.classAnnotationTest(Plugin.class))
                 .map(PluginScanner::descriptorFromClass)
