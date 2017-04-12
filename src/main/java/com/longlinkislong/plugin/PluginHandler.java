@@ -25,6 +25,8 @@
  */
 package com.longlinkislong.plugin;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -62,4 +64,10 @@ public interface PluginHandler {
      * with the given id.
      */
     <T> Optional<T> newInstance(String id, Object... params);
+
+    /**
+     * List all plugins registered with this PluginHander.
+     * @return collection of each PluginDescriptor.
+     */
+    Collection<PluginDescriptor> listPlugins();
 }

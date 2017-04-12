@@ -5,6 +5,8 @@
  */
 package com.longlinkislong.plugin;
 
+import java.util.Collection;
+
 /**
  *
  * @author Robert
@@ -17,7 +19,7 @@ public class BasicPluginHandler<BaseType> extends AbstractPluginHandler<BaseType
     public BasicPluginHandler(Class<BaseType> baseClass) {
         this.baseClass = baseClass;
     }
-    
+
     @Override
     protected PluginManager<String, BaseType> getPluginManager() {
         return pm;
@@ -27,5 +29,5 @@ public class BasicPluginHandler<BaseType> extends AbstractPluginHandler<BaseType
     public <T> boolean supportsType(Class<T> theType) {
         return baseClass.isAssignableFrom(theType);
     }
-    
+
 }

@@ -25,6 +25,7 @@
  */
 package com.longlinkislong.plugin;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -70,7 +71,7 @@ public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
         if(!this.getPluginManager().listPlugins().contains(id)){
             return Optional.empty();
         }
-        
+
         return Optional.ofNullable((T) this.getPluginManager().getImplementation(id, params));
     }
 
@@ -106,5 +107,10 @@ public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
         return Optional.ofNullable(this.registeredPlugins.get(id))
                 .map(meta -> meta.clazz)
                 .map(clazz -> (Class<? extends BaseType>) clazz);
+    }
+
+    @Override
+    public Collection<PluginDescriptor> listPlugins() {
+        return registeredPlugins.values();
     }
 }
