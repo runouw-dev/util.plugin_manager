@@ -26,7 +26,6 @@
 package com.longlinkislong.plugin;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -70,4 +69,11 @@ public interface PluginHandler {
      * @return collection of each PluginDescriptor.
      */
     Collection<PluginDescriptor> listPlugins();
+
+    /**
+     * Gets te descriptor that is assigned to this lookup
+     * @param lookup lookup to find the descriptor
+     * @return Optional.empty if no lookup is found
+     */
+    Optional<PluginDescriptor> getDescriptor(String lookup);
 }

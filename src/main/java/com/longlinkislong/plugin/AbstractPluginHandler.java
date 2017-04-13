@@ -113,4 +113,9 @@ public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
     public Collection<PluginDescriptor> listPlugins() {
         return registeredPlugins.values();
     }
+
+    @Override
+    public Optional<PluginDescriptor> getDescriptor(String lookup) {
+        return Optional.ofNullable(this.registeredPlugins.get(lookup));
+    }
 }
