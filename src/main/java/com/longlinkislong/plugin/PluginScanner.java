@@ -45,7 +45,7 @@ import java.util.stream.StreamSupport;
  *
  * @author zmichaels
  */
-public final class PluginScanner {    
+public final class PluginScanner {
     private final List<PluginHandler> handlers = new ArrayList<>();
     private final Set<PluginHandler> uniquePlugins = new HashSet<>();
 
@@ -56,7 +56,7 @@ public final class PluginScanner {
     public PluginScanner() {
         final ServiceLoader<PluginHandler> spiPlugins = ServiceLoader.load(PluginHandler.class);
 
-        for (PluginHandler plugin : spiPlugins) {            
+        for (PluginHandler plugin : spiPlugins) {
             addPluginHandler(plugin);
         }
     }
@@ -138,6 +138,20 @@ public final class PluginScanner {
     }
 
     /**
+     * Attempts to create a new instance of the given plugin
+     *
+     * @param <T> the base type
+     * @param baseType the base class definition
+     * @param id the id
+     * @param params params to use on the instance
+     * @return the instance if it exists
+     */
+    public <T> Optional<T> newInstance(final Class<T> baseType, final String id, Object...params) {
+        return getPluginHandler(baseType)
+                .flatMap(m -> m.newInstance(id, params));
+    }
+
+    /**
      * Scans an array of Classes for plugins. This is the same as calling
      * [code]scan(plugins, 0)[/code]
      *
@@ -215,38 +229,38 @@ public final class PluginScanner {
      * @param pluginStream the stream to handle.
      * @return a Stream of all processed plugins
      */
-    public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {        
+    public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {
         return pluginStream
                 .filter(ReflectionUtil.classAnnotationTest(Plugin.class))
                 .map(PluginScanner::descriptorFromClass)
                 .filter(this::process);
     }
 
-    private static PluginDescriptor descriptorFromClass(Class<?> clazz) {        
+    private static PluginDescriptor descriptorFromClass(Class<?> clazz) {
         return Arrays.stream(clazz.getFields())
                 .filter(ReflectionUtil::isStaticFinal)
                 .reduce(new PluginDescriptor(clazz), (desc, field) -> {
                     if (field.isAnnotationPresent(Plugin.Lookup.class)) {
                         final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-                                                
+
                         desc = desc.withLookup(value.orElseThrow(() -> new RuntimeException("Unable to evaluate value!")));
                     }
 
                     if (field.isAnnotationPresent(Plugin.Name.class)) {
                         final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-                        
+
                         desc = desc.withName(value.orElseThrow(() -> new RuntimeException("Unable to evaluate name!")));
                     }
 
                     if (field.isAnnotationPresent(Plugin.Description.class)) {
                         final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-                        
+
                         desc = desc.withDescription(value.orElseThrow(() -> new RuntimeException("Unable to evaluate description!")));
                     }
 
                     return desc;
                 }, PluginDescriptor::combine);
-    }    
+    }
 
     private boolean process(final PluginDescriptor plugin) {
         return this.handlers.stream()
