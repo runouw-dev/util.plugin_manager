@@ -32,8 +32,9 @@ import java.util.Optional;
  * PluginHandler defines the needed functionality for Plugin systems
  *
  * @author zmichaels
+ * @param <BaseType>
  */
-public interface PluginHandler {
+public interface PluginHandler<BaseType> {
 
     /**
      * Attempts to register a PluginDescriptor as a plugin
@@ -46,23 +47,20 @@ public interface PluginHandler {
     /**
      * Checks if the supplied type is handled by this PluginHandler
      *
-     * @param <T> the type to handle
      * @param theType the class definition
      * @return true if the PluginHandler handles the type.
      */
-    <T> boolean supportsType(Class<T> theType);
+    boolean supportsType(Class theType);
 
     /**
      * Attempts to create a new instance of the specified ID
      *
-     * @param <T> the type to attempt to cast to. This exists mostly for
-     * syntactical sugar.
      * @param id the plugin id.
      * @param params
      * @return the new instance. May return empty if no plugins were registered
      * with the given id.
      */
-    <T> Optional<T> newInstance(String id, Object... params);
+    Optional<BaseType> newInstance(String id, Object... params);
 
     /**
      * List all plugins registered with this PluginHander.
@@ -71,7 +69,7 @@ public interface PluginHandler {
     Collection<PluginDescriptor> listPlugins();
 
     /**
-     * Gets te descriptor that is assigned to this lookup
+     * Gets the descriptor that is assigned to this lookup
      * @param lookup lookup to find the descriptor
      * @return Optional.empty if no lookup is found
      */

@@ -37,7 +37,7 @@ import java.util.Optional;
  * @author zmichaels
  * @param <BaseType> the base type
  */
-public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
+public abstract class AbstractPluginHandler<BaseType> implements PluginHandler<BaseType> {
 
     private final Map<String, PluginDescriptor> registeredPlugins = new HashMap<>();
 
@@ -67,12 +67,12 @@ public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
     }
 
     @Override
-    public <T> Optional<T> newInstance(final String id, Object... params) {
+    public Optional<BaseType> newInstance(final String id, Object... params) {
         if(!this.getPluginManager().listPlugins().contains(id)){
             return Optional.empty();
         }
 
-        return Optional.ofNullable((T) this.getPluginManager().getImplementation(id, params));
+        return Optional.ofNullable((BaseType) this.getPluginManager().getImplementation(id, params));
     }
 
     /**
