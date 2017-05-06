@@ -18,7 +18,6 @@ import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -415,5 +414,24 @@ public final class ReflectionUtil {
             LOGGER.debug(ex.getMessage(), ex);
             return Optional.empty();
         }
+    }
+    
+    public static <T> Optional<T> getAnnotatedStaticField(Class clazz, Class<? extends Annotation> annotation){
+        do{
+            for(Field field:clazz.getDeclaredFields()){
+                if(field.isAnnotationPresent(annotation)){
+                    if(!field.isAccessible()){
+                        field.setAccessible(true);
+                    }
+                    try{
+                        return Optional.of((T) field.get(null));
+                    }catch(IllegalArgumentException | IllegalAccessException ex){
+                        throw new Error(ex);
+                    }
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }while(clazz != null);
+        return Optional.empty();
     }
 }

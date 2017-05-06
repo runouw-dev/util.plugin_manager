@@ -26,7 +26,6 @@
 package com.longlinkislong.plugin;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -259,40 +258,21 @@ public final class PluginScanner {
                 .map(this::descriptorFromClass)
                 .filter(this::process);
     }
-    
-    public static Optional<String> getAnnotatedStaticField(Class clazz, Class<? extends Annotation> annotation){
-        do{
-            for(Field field:clazz.getDeclaredFields()){
-                if(field.isAnnotationPresent(annotation)){
-                    if(!field.isAccessible()){
-                        field.setAccessible(true);
-                    }
-                    try{
-                        return Optional.of((String) field.get(null));
-                    }catch(IllegalArgumentException | IllegalAccessException ex){
-                        throw new Error(ex);
-                    }
-                }
-            }
-            clazz = clazz.getSuperclass();
-        }while(clazz != null);
-        return Optional.empty();
-    }
 
     private PluginDescriptor descriptorFromClass(Class<?> clazz) {
         return Arrays.stream(clazz.getFields())
                 .filter(ReflectionUtil::isStaticFinal)
                 .reduce(new PluginDescriptor(clazz), (desc, field) -> {
                     
-                    final Optional<String> getLookup = getAnnotatedStaticField(clazz, lookupAnnotation);
+                    final Optional<String> getLookup = ReflectionUtil.getAnnotatedStaticField(clazz, lookupAnnotation);
                     if (getLookup.isPresent()) {
                         desc = desc.withLookup(getLookup.get());
                     }
-                    final Optional<String> getName = getAnnotatedStaticField(clazz, nameAnnotation);
+                    final Optional<String> getName = ReflectionUtil.getAnnotatedStaticField(clazz, nameAnnotation);
                     if (getName.isPresent()) {
                         desc = desc.withLookup(getName.get());
                     }
-                    final Optional<String> getDesc = getAnnotatedStaticField(clazz, descriptionAnnotation);
+                    final Optional<String> getDesc = ReflectionUtil.getAnnotatedStaticField(clazz, descriptionAnnotation);
                     if (getDesc.isPresent()) {
                         desc = desc.withLookup(getDesc.get());
                     }
