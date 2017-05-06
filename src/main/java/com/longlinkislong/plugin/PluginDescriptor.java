@@ -25,17 +25,6 @@
  */
 package com.longlinkislong.plugin;
 
-import java.lang.annotation.Annotation;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,119 +55,119 @@ public final class PluginDescriptor {
      */
     public final Class<?> clazz;
 
-    /**
-     * Uses reflection to retrieve the values of all static final fields
-     * annotated with the specified annotation. All fields will be set as
-     * accessible.
-     *
-     * @param anno the annotation to search for.
-     * @return the list of annotated values.
-     */
-    public List<Object> getAnnotatedStaticFinalFieldObjects(final Class<? extends Annotation> anno) {
-        return annotatedFields(anno)
-                .filter(ReflectionUtil::isStaticFinal)
-                .map(ReflectionUtil::setAccessible)
-                .map(ReflectionUtil::getStaticObjectField)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Retrieves a Stream of fields annotated with the specified annotation. The
-     * fields will not be set as accessible. This will also include non-static
-     * final fields.
-     *
-     * @param anno the annotation to search for.
-     * @return the stream of fields.
-     */
-    public Stream<Field> annotatedFields(final Class<? extends Annotation> anno) {
-        return Arrays.stream(this.clazz.getFields())
-                .filter(ReflectionUtil.fieldAnnotationTest(anno));
-    }
-
-    /**
-     * Retrieves a Stream of methods annotated with the specified annotation.
-     * The fields will not be set as accessible. This will also include
-     * non-static methods.
-     *
-     * @param anno the annotation to search for.
-     * @return the stream of methods.
-     */
-    public Stream<Method> annotatedMethods(final Class<? extends Annotation> anno) {
-        return Arrays.stream(this.clazz.getMethods())
-                .filter(ReflectionUtil.methodAnnotationTest(anno));
-    }
-
-    /**
-     * Returns a List of static Methods that were annotated with the given
-     * Annotation.
-     *
-     * @param anno the annotation
-     * @return the list of methods.
-     */
-    public List<Method> getAnnotatedStaticMethods(final Class<? extends Annotation> anno) {
-        return annotatedMethods(anno)
-                .filter(ReflectionUtil::isStatic)
-                .map(ReflectionUtil::setAccessible)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Assigns all annotated static Object fields that match the specified
-     * annotation.
-     *
-     * @param anno the annotation to test for.
-     * @param value the value to assign.
-     */
-    public void setAnnotatedStaticObjects(final Class<? extends Annotation> anno, final Object value) {
-        annotatedFields(anno)
-                .filter(ReflectionUtil::isStatic)
-                .map(ReflectionUtil::setAccessible)
-                .forEach(ReflectionUtil.staticObjectFieldSetter(value));
-    }
-
-    /**
-     * Assigns all annotated static int fields that match the specified
-     * annotation.
-     *
-     * @param anno the annotation to test for.
-     * @param value the value to assign.
-     */
-    public void setAnnotatedStaticInts(final Class<? extends Annotation> anno, final int value) {
-        annotatedFields(anno)
-                .filter(ReflectionUtil::isStatic)
-                .map(ReflectionUtil::setAccessible)
-                .forEach(ReflectionUtil.staticIntFieldSetter(value));
-    }
-
-    /**
-     * Assigns all annotated static long fields that match the specified
-     * annotation.
-     *
-     * @param anno the annotation to test for.
-     * @param value the value to assign.
-     */
-    public void setAnnotatedStaticLongs(final Class<? extends Annotation> anno, final long value) {
-        annotatedFields(anno)
-                .filter(ReflectionUtil::isStatic)
-                .map(ReflectionUtil::setAccessible)
-                .forEach(ReflectionUtil.staticLongFieldSetter(value));
-    }
-
-    /**
-     * Assigns all annotated static double fields that match the specified
-     * annotation.
-     *
-     * @param anno the annotation to test for.
-     * @param value the value to assign.
-     */
-    public void setAnnotatedStaticDoubles(final Class<? extends Annotation> anno, final double value) {
-        annotatedFields(anno)
-                .filter(ReflectionUtil::isStatic)
-                .map(ReflectionUtil::setAccessible)
-                .forEach(ReflectionUtil.staticDoubleFieldSetter(value));
-    }
+//    /**
+//     * Uses reflection to retrieve the values of all static final fields
+//     * annotated with the specified annotation. All fields will be set as
+//     * accessible.
+//     *
+//     * @param anno the annotation to search for.
+//     * @return the list of annotated values.
+//     */
+//    public List<Object> getAnnotatedStaticFinalFieldObjects(final Class<? extends Annotation> anno) {
+//        return annotatedFields(anno)
+//                .filter(ReflectionUtil::isStaticFinal)
+//                .map(ReflectionUtil::setAccessible)
+//                .map(ReflectionUtil::getStaticObjectField)
+//                .filter(Optional::isPresent)
+//                .map(Optional::get)
+//                .collect(Collectors.toList());
+//    }
+//
+//    /**
+//     * Retrieves a Stream of fields annotated with the specified annotation. The
+//     * fields will not be set as accessible. This will also include non-static
+//     * final fields.
+//     *
+//     * @param anno the annotation to search for.
+//     * @return the stream of fields.
+//     */
+//    public Stream<Field> annotatedFields(final Class<? extends Annotation> anno) {
+//        return Arrays.stream(this.clazz.getFields())
+//                .filter(ReflectionUtil.fieldAnnotationTest(anno));
+//    }
+//
+//    /**
+//     * Retrieves a Stream of methods annotated with the specified annotation.
+//     * The fields will not be set as accessible. This will also include
+//     * non-static methods.
+//     *
+//     * @param anno the annotation to search for.
+//     * @return the stream of methods.
+//     */
+//    public Stream<Method> annotatedMethods(final Class<? extends Annotation> anno) {
+//        return Arrays.stream(this.clazz.getMethods())
+//                .filter(ReflectionUtil.methodAnnotationTest(anno));
+//    }
+//
+//    /**
+//     * Returns a List of static Methods that were annotated with the given
+//     * Annotation.
+//     *
+//     * @param anno the annotation
+//     * @return the list of methods.
+//     */
+//    public List<Method> getAnnotatedStaticMethods(final Class<? extends Annotation> anno) {
+//        return annotatedMethods(anno)
+//                .filter(ReflectionUtil::isStatic)
+//                .map(ReflectionUtil::setAccessible)
+//                .collect(Collectors.toList());
+//    }
+//
+//    /**
+//     * Assigns all annotated static Object fields that match the specified
+//     * annotation.
+//     *
+//     * @param anno the annotation to test for.
+//     * @param value the value to assign.
+//     */
+//    public void setAnnotatedStaticObjects(final Class<? extends Annotation> anno, final Object value) {
+//        annotatedFields(anno)
+//                .filter(ReflectionUtil::isStatic)
+//                .map(ReflectionUtil::setAccessible)
+//                .forEach(ReflectionUtil.staticObjectFieldSetter(value));
+//    }
+//
+//    /**
+//     * Assigns all annotated static int fields that match the specified
+//     * annotation.
+//     *
+//     * @param anno the annotation to test for.
+//     * @param value the value to assign.
+//     */
+//    public void setAnnotatedStaticInts(final Class<? extends Annotation> anno, final int value) {
+//        annotatedFields(anno)
+//                .filter(ReflectionUtil::isStatic)
+//                .map(ReflectionUtil::setAccessible)
+//                .forEach(ReflectionUtil.staticIntFieldSetter(value));
+//    }
+//
+//    /**
+//     * Assigns all annotated static long fields that match the specified
+//     * annotation.
+//     *
+//     * @param anno the annotation to test for.
+//     * @param value the value to assign.
+//     */
+//    public void setAnnotatedStaticLongs(final Class<? extends Annotation> anno, final long value) {
+//        annotatedFields(anno)
+//                .filter(ReflectionUtil::isStatic)
+//                .map(ReflectionUtil::setAccessible)
+//                .forEach(ReflectionUtil.staticLongFieldSetter(value));
+//    }
+//
+//    /**
+//     * Assigns all annotated static double fields that match the specified
+//     * annotation.
+//     *
+//     * @param anno the annotation to test for.
+//     * @param value the value to assign.
+//     */
+//    public void setAnnotatedStaticDoubles(final Class<? extends Annotation> anno, final double value) {
+//        annotatedFields(anno)
+//                .filter(ReflectionUtil::isStatic)
+//                .map(ReflectionUtil::setAccessible)
+//                .forEach(ReflectionUtil.staticDoubleFieldSetter(value));
+//    }
 
     /**
      * Checks if the name field is currently the default value.

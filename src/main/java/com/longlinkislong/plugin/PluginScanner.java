@@ -25,6 +25,8 @@
  */
 package com.longlinkislong.plugin;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +50,28 @@ import java.util.stream.StreamSupport;
 public final class PluginScanner {
     private final List<PluginHandler> handlers = new ArrayList<>();
     private final Set<PluginHandler> uniquePlugins = new HashSet<>();
+    
+    private Class<? extends Annotation> pluginAnnotation = Plugin.class;
+    
+    private Class<? extends Annotation> lookupAnnotation = Plugin.Lookup.class;
+    private Class<? extends Annotation> nameAnnotation = Plugin.Name.class;
+    private Class<? extends Annotation> descriptionAnnotation = Plugin.Description.class;
+
+    public void setPluginAnnotation(Class<? extends Annotation> pluginAnnotation) {
+        this.pluginAnnotation = pluginAnnotation;
+    }
+    
+    public void setLookupAnnotation(Class<? extends Annotation> lookupAnnotation) {
+        this.lookupAnnotation = lookupAnnotation;
+    }
+
+    public void setNameAnnotation(Class<? extends Annotation> nameAnnotation) {
+        this.nameAnnotation = nameAnnotation;
+    }
+
+    public void setDescriptionAnnotation(Class<? extends Annotation> descriptionAnnotation) {
+        this.descriptionAnnotation = descriptionAnnotation;
+    }
 
     /**
      * Constructs a new PluginScanner. This will automatically load all
@@ -231,31 +255,46 @@ public final class PluginScanner {
      */
     public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {
         return pluginStream
-                .filter(ReflectionUtil.classAnnotationTest(Plugin.class))
-                .map(PluginScanner::descriptorFromClass)
+                .filter(ReflectionUtil.classAnnotationTest(pluginAnnotation))
+                .map(this::descriptorFromClass)
                 .filter(this::process);
     }
+    
+    public static Optional<String> getAnnotatedStaticField(Class clazz, Class<? extends Annotation> annotation){
+        do{
+            for(Field field:clazz.getDeclaredFields()){
+                if(field.isAnnotationPresent(annotation)){
+                    if(!field.isAccessible()){
+                        field.setAccessible(true);
+                    }
+                    try{
+                        return Optional.of((String) field.get(null));
+                    }catch(IllegalArgumentException | IllegalAccessException ex){
+                        throw new Error(ex);
+                    }
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }while(clazz != null);
+        return Optional.empty();
+    }
 
-    private static PluginDescriptor descriptorFromClass(Class<?> clazz) {
+    private PluginDescriptor descriptorFromClass(Class<?> clazz) {
         return Arrays.stream(clazz.getFields())
                 .filter(ReflectionUtil::isStaticFinal)
                 .reduce(new PluginDescriptor(clazz), (desc, field) -> {
-                    if (field.isAnnotationPresent(Plugin.Lookup.class)) {
-                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-
-                        desc = desc.withLookup(value.orElseThrow(() -> new RuntimeException("Unable to evaluate value!")));
+                    
+                    final Optional<String> getLookup = getAnnotatedStaticField(clazz, lookupAnnotation);
+                    if (getLookup.isPresent()) {
+                        desc = desc.withLookup(getLookup.get());
                     }
-
-                    if (field.isAnnotationPresent(Plugin.Name.class)) {
-                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-
-                        desc = desc.withName(value.orElseThrow(() -> new RuntimeException("Unable to evaluate name!")));
+                    final Optional<String> getName = getAnnotatedStaticField(clazz, nameAnnotation);
+                    if (getName.isPresent()) {
+                        desc = desc.withLookup(getName.get());
                     }
-
-                    if (field.isAnnotationPresent(Plugin.Description.class)) {
-                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-
-                        desc = desc.withDescription(value.orElseThrow(() -> new RuntimeException("Unable to evaluate description!")));
+                    final Optional<String> getDesc = getAnnotatedStaticField(clazz, descriptionAnnotation);
+                    if (getDesc.isPresent()) {
+                        desc = desc.withLookup(getDesc.get());
                     }
 
                     return desc;
