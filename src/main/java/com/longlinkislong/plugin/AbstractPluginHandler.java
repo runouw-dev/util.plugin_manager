@@ -25,6 +25,7 @@
  */
 package com.longlinkislong.plugin;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -36,7 +37,7 @@ import java.util.Optional;
  * @author zmichaels
  * @param <BaseType> the base type
  */
-public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
+public abstract class AbstractPluginHandler<BaseType> implements PluginHandler<BaseType> {
 
     private final Map<String, PluginDescriptor> registeredPlugins = new HashMap<>();
 
@@ -66,12 +67,12 @@ public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
     }
 
     @Override
-    public <T> Optional<T> newInstance(final String id, Object... params) {
+    public Optional<BaseType> newInstance(final String id, Object... params) {
         if(!this.getPluginManager().listPlugins().contains(id)){
             return Optional.empty();
         }
-        
-        return Optional.ofNullable((T) this.getPluginManager().getImplementation(id, params));
+
+        return Optional.ofNullable((BaseType) this.getPluginManager().getImplementation(id, params));
     }
 
     /**
@@ -106,5 +107,15 @@ public abstract class AbstractPluginHandler<BaseType> implements PluginHandler {
         return Optional.ofNullable(this.registeredPlugins.get(id))
                 .map(meta -> meta.clazz)
                 .map(clazz -> (Class<? extends BaseType>) clazz);
+    }
+
+    @Override
+    public Collection<PluginDescriptor> listPlugins() {
+        return registeredPlugins.values();
+    }
+
+    @Override
+    public Optional<PluginDescriptor> getDescriptor(String lookup) {
+        return Optional.ofNullable(this.registeredPlugins.get(lookup));
     }
 }

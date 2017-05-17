@@ -25,6 +25,7 @@
  */
 package com.longlinkislong.plugin;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,9 +46,31 @@ import java.util.stream.StreamSupport;
  *
  * @author zmichaels
  */
-public final class PluginScanner {    
+public final class PluginScanner {
     private final List<PluginHandler> handlers = new ArrayList<>();
     private final Set<PluginHandler> uniquePlugins = new HashSet<>();
+    
+    private Class<? extends Annotation> pluginAnnotation = Plugin.class;
+    
+    private Class<? extends Annotation> lookupAnnotation = Plugin.Lookup.class;
+    private Class<? extends Annotation> nameAnnotation = Plugin.Name.class;
+    private Class<? extends Annotation> descriptionAnnotation = Plugin.Description.class;
+
+    public void setPluginAnnotation(Class<? extends Annotation> pluginAnnotation) {
+        this.pluginAnnotation = pluginAnnotation;
+    }
+    
+    public void setLookupAnnotation(Class<? extends Annotation> lookupAnnotation) {
+        this.lookupAnnotation = lookupAnnotation;
+    }
+
+    public void setNameAnnotation(Class<? extends Annotation> nameAnnotation) {
+        this.nameAnnotation = nameAnnotation;
+    }
+
+    public void setDescriptionAnnotation(Class<? extends Annotation> descriptionAnnotation) {
+        this.descriptionAnnotation = descriptionAnnotation;
+    }
 
     /**
      * Constructs a new PluginScanner. This will automatically load all
@@ -56,7 +79,7 @@ public final class PluginScanner {
     public PluginScanner() {
         final ServiceLoader<PluginHandler> spiPlugins = ServiceLoader.load(PluginHandler.class);
 
-        for (PluginHandler plugin : spiPlugins) {            
+        for (PluginHandler plugin : spiPlugins) {
             addPluginHandler(plugin);
         }
     }
@@ -138,6 +161,20 @@ public final class PluginScanner {
     }
 
     /**
+     * Attempts to create a new instance of the given plugin
+     *
+     * @param <T> the base type
+     * @param baseType the base class definition
+     * @param id the id
+     * @param params params to use on the instance
+     * @return the instance if it exists
+     */
+    public <T> Optional<T> newInstance(final Class<T> baseType, final String id, Object...params) {
+        return getPluginHandler(baseType)
+                .flatMap(m -> m.newInstance(id, params));
+    }
+
+    /**
      * Scans an array of Classes for plugins. This is the same as calling
      * [code]scan(plugins, 0)[/code]
      *
@@ -215,38 +252,34 @@ public final class PluginScanner {
      * @param pluginStream the stream to handle.
      * @return a Stream of all processed plugins
      */
-    public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {        
+    public Stream<PluginDescriptor> scan(final Stream<Class<?>> pluginStream) {
         return pluginStream
-                .filter(ReflectionUtil.classAnnotationTest(Plugin.class))
-                .map(PluginScanner::descriptorFromClass)
+                .filter(ReflectionUtil.classAnnotationTest(pluginAnnotation))
+                .map(this::descriptorFromClass)
                 .filter(this::process);
     }
 
-    private static PluginDescriptor descriptorFromClass(Class<?> clazz) {        
+    private PluginDescriptor descriptorFromClass(Class<?> clazz) {
         return Arrays.stream(clazz.getFields())
                 .filter(ReflectionUtil::isStaticFinal)
                 .reduce(new PluginDescriptor(clazz), (desc, field) -> {
-                    if (field.isAnnotationPresent(Plugin.Lookup.class)) {
-                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-                                                
-                        desc = desc.withLookup(value.orElseThrow(() -> new RuntimeException("Unable to evaluate value!")));
+                    
+                    final Optional<String> getLookup = ReflectionUtil.getAnnotatedStaticField(clazz, lookupAnnotation);
+                    if (getLookup.isPresent()) {
+                        desc = desc.withLookup(getLookup.get());
                     }
-
-                    if (field.isAnnotationPresent(Plugin.Name.class)) {
-                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-                        
-                        desc = desc.withName(value.orElseThrow(() -> new RuntimeException("Unable to evaluate name!")));
+                    final Optional<String> getName = ReflectionUtil.getAnnotatedStaticField(clazz, nameAnnotation);
+                    if (getName.isPresent()) {
+                        desc = desc.withLookup(getName.get());
                     }
-
-                    if (field.isAnnotationPresent(Plugin.Description.class)) {
-                        final Optional<String> value = ReflectionUtil.getStaticObjectField(field);
-                        
-                        desc = desc.withDescription(value.orElseThrow(() -> new RuntimeException("Unable to evaluate description!")));
+                    final Optional<String> getDesc = ReflectionUtil.getAnnotatedStaticField(clazz, descriptionAnnotation);
+                    if (getDesc.isPresent()) {
+                        desc = desc.withLookup(getDesc.get());
                     }
 
                     return desc;
                 }, PluginDescriptor::combine);
-    }    
+    }
 
     private boolean process(final PluginDescriptor plugin) {
         return this.handlers.stream()

@@ -17,15 +17,15 @@ public class BasicPluginHandler<BaseType> extends AbstractPluginHandler<BaseType
     public BasicPluginHandler(Class<BaseType> baseClass) {
         this.baseClass = baseClass;
     }
-    
+
     @Override
     protected PluginManager<String, BaseType> getPluginManager() {
         return pm;
     }
 
     @Override
-    public <T> boolean supportsType(Class<T> theType) {
+    public boolean supportsType(Class theType) {
         return baseClass.isAssignableFrom(theType);
     }
-    
+
 }
